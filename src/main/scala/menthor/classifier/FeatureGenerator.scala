@@ -1,7 +1,7 @@
-package menthor.maxent
+package menthor.classifier
 
 import scalala.tensor.dense.DenseVector
-import scalala.tensor.mutable.Vector;
+import scalala.tensor.mutable.Vector
 
 abstract class FeatureGenerator[C, S](private val _classes: List[C], private val fs: List[FeatureFunction[C, S]], private val _C: Double) {
 
@@ -11,7 +11,7 @@ abstract class FeatureGenerator[C, S](private val _classes: List[C], private val
     }
   }
   
-  def classes = _classes
+  def classes  = _classes
   def features = _features
   def C = _C
 

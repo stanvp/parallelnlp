@@ -1,4 +1,4 @@
-package menthor.documentclassifier
+package menthor.apps
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -7,17 +7,21 @@ import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
 import menthor.util.CollectionUtils._
 import scala.util.Random
-import menthor.maxent.MaxentClassifier
+import menthor.classifier.NaiveBayesClassifier
+import menthor.documentclassifier.Document
+import menthor.documentclassifier.Analyzer
+import menthor.documentclassifier.DocumentFeatureTrainer
+import scala.collection.mutable.ListBuffer
 
-object MovieReviewClassifier {
+object NaiveBayesClassifierMovieReview {
   
   val stopWords = {
     val source = Source.fromURL(getClass.getResource("/common-english-words.txt"))
     source.getLines().mkString(",").split(",").toSet
   }
   
-  def load(folder: String): HashMap[String, Document] = {
-    val collection = new HashMap[String, Document]
+  def load(folder: String): List[Document] = {
+    val collection = new ListBuffer[Document]
 
     forEachFileIn(new File(folder)) {
       file =>
@@ -26,30 +30,29 @@ object MovieReviewClassifier {
           file.getParentFile().getName(),
           Analyzer.termFrequency(Source.fromFile(file).getLines().mkString("\n")))
         
-        collection.put(document.name, document)
+        collection += document
     }
 
-    collection
+    collection.toList
   }
 
   def main(args: Array[String]) {
-	val collection = load("/home/stanvp/workspace/semesterproject/movie_reviews")
+	val collection = Random.shuffle(load("/home/stanvp/workspace/semesterproject/movie_reviews"))
 	
 	// split the collection into training and test sets  
-	val testSize = (collection.size * 0.3).toInt
-	val start = Random.nextInt(collection.size - testSize)
-	val test = collection.slice(start, start + testSize)
+	val testSize = (collection.size * 0.1).toInt
+	val test = collection.slice(0, testSize - 1)
 	
-	val train = collection -- test.map(_._1)
+	val train = collection.slice(testSize, collection.size - 1)
 	
 	val categories = List("neg", "pos")
-	val samples = train.values.map(d => (d.category, d)).toList
+	val samples = train.map(d => (d.category, d)).toList
 	
-	val maxent = MaxentClassifier.trainParallel(categories, samples, new DocumentFeatureTrainer(stopWords))
+	val naiveBayes = NaiveBayesClassifier.trainSequential(categories, samples, new DocumentFeatureTrainer(stopWords))
 	
 	var success = 0
-	for ((c,d) <- test) {
-	  val r = maxent.classify(d)
+	for (d <- test) {
+	  val r = naiveBayes.classify(d)
 	  
 	  if (d.category == r._1) {
 	    success += 1

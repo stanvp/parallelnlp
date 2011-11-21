@@ -1,24 +1,20 @@
-package menthor.maxent
+package menthor.classifier
 
-import menthor.processing.Vertex
-import menthor.processing.Substep
-import menthor.processing.Message
-import menthor.processing.Graph
-import menthor.util.MathUtils._
-
-import scala.Math
 import scala.collection.mutable.HashMap
-import scala.collection.mutable.ArrayBuffer
 
-import scalala.scalar._;
-import scalala.tensor.::;
-import scalala.tensor.mutable._;
-import scalala.tensor.dense._;
-import scalala.tensor.sparse._;
-import scalala.library.Library._;
-import scalala.library.LinearAlgebra._;
-import scalala.library.Statistics._;
-import scalala.operators.Implicits._;
+import menthor.processing.Graph
+import menthor.processing.Message
+import menthor.processing.Substep
+import menthor.processing.Vertex
+import menthor.util.MathUtils._
+import scalala.library.Library._
+import scalala.library.LinearAlgebra._
+import scalala.library.Statistics._
+import scalala.operators.Implicits._
+import scalala.scalar._
+import scalala.tensor.dense._
+import scalala.tensor.mutable._
+import scala.Math
 
 /**
  * Maximum entropy classifier
@@ -29,8 +25,8 @@ import scalala.operators.Implicits._;
  * Christopher Manning and Dan Klein. 2003. Optimization, Maxent Models, and Conditional Estimation without Magic. Tutorial at HLT-NAACL 2003 and ACL 2003.
  *
  */
-case class MaxentClassifier[C, S](classes: List[C], weights: Vector[Double], featureGenerator: FeatureGenerator[C, S]) {
-  def classify(sample: S) = probClassify(sample).maxBy(_._2)
+case class MaxentClassifier[C, S](classes: List[C], weights: Vector[Double], featureGenerator: FeatureGenerator[C, S]) extends Classifier[C,S] {
+  override def classify(sample: S) : (C,Double) = probClassify(sample).maxBy(_._2)
 
   def probClassify(sample: S): Map[C, Double] = {
     val prob = new HashMap[C, Double]
