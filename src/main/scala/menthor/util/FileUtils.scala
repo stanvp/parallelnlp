@@ -1,4 +1,4 @@
-package menthor.maxent.util
+package menthor.util
 import java.io.File
 
 object FileUtils {

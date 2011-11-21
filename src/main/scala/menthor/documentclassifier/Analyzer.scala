@@ -1,4 +1,4 @@
-package menthor.maxent
+package menthor.documentclassifier
 
 object Analyzer {
   def termFrequency(text: String) = {

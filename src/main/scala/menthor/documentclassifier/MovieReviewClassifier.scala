@@ -1,12 +1,13 @@
-package menthor.maxent
+package menthor.documentclassifier
 
 import scala.collection.JavaConversions._
 import scala.io.Source
 import java.io.File
 import scala.collection.mutable.HashMap
-import util.FileUtils._
-import util.CollectionUtils._
+import menthor.util.FileUtils._
+import menthor.util.CollectionUtils._
 import scala.util.Random
+import menthor.maxent.MaxentClassifier
 
 object MovieReviewClassifier {
   
@@ -34,19 +35,20 @@ object MovieReviewClassifier {
   def main(args: Array[String]) {
 	val collection = load("/home/stanvp/workspace/semesterproject/movie_reviews")
 	
-	val validationSize = (collection.size * 0.3).toInt
-	val start = Random.nextInt(collection.size - validationSize)
-	val validation = collection.slice(start, start + validationSize)
+	// split the collection into training and test sets  
+	val testSize = (collection.size * 0.3).toInt
+	val start = Random.nextInt(collection.size - testSize)
+	val test = collection.slice(start, start + testSize)
 	
-	val train = collection -- validation.map(_._1)
+	val train = collection -- test.map(_._1)
 	
 	val categories = List("neg", "pos")
 	val samples = train.values.map(d => (d.category, d)).toList
 	
-	val maxent = Maxent.trainSequential(categories, samples, new DocumentFeatureGenerator(stopWords))
+	val maxent = MaxentClassifier.trainParallel(categories, samples, new DocumentFeatureTrainer(stopWords))
 	
 	var success = 0
-	for ((c,d) <- validation) {
+	for ((c,d) <- test) {
 	  val r = maxent.classify(d)
 	  
 	  if (d.category == r._1) {
@@ -54,8 +56,8 @@ object MovieReviewClassifier {
 	  }
 	}
 	
-	println("Total: " + validation.size)
+	println("Total: " + test.size)
 	println("Success: " + success)
-	println("Percent: " + ((success / validation.size.toFloat) * 100 ) + " %")
+	println("Percent: " + ((success / test.size.toFloat) * 100 ) + " %")
   }
 }

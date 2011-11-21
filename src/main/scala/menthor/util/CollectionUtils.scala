@@ -1,4 +1,4 @@
-package menthor.maxent.util
+package menthor.util
 
 object CollectionUtils {
   def cartesian[A](xs: Iterable[Iterable[A]]) =

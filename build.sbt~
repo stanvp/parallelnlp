@@ -11,7 +11,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalala" %% "scalala" % "1.0.0.RC2-SNAPSHOT",
+  "org.scalala" %% "scalala" % "1.0.0.RC2-SNAPSHOT"
   "org.scalatest" %% "scalatest" % "1.6.1" % "test",
   "epfl" %% "libmenthor" % "0.1"
 )
