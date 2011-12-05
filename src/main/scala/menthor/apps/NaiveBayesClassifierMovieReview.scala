@@ -5,12 +5,9 @@ import scala.io.Source
 import java.io.File
 import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
-import menthor.util.CollectionUtils._
 import scala.util.Random
-import menthor.classifier.NaiveBayesClassifier
-import menthor.documentclassifier.Document
-import menthor.documentclassifier.Analyzer
-import menthor.documentclassifier.DocumentFeatureTrainer
+import menthor.classifier.naivebayes.NaiveBayesClassifier
+import menthor.classifier.naivebayes.NaiveBayesTrainer
 import scala.collection.mutable.ListBuffer
 
 object NaiveBayesClassifierMovieReview {
@@ -48,7 +45,7 @@ object NaiveBayesClassifierMovieReview {
 	val categories = List("neg", "pos")
 	val samples = train.map(d => (d.category, d)).toList
 	
-	val naiveBayes = NaiveBayesClassifier.trainSequential(categories, samples, new DocumentFeatureTrainer(stopWords))
+	val naiveBayes = NaiveBayesTrainer.train(categories, samples)
 	
 	var success = 0
 	for (d <- test) {

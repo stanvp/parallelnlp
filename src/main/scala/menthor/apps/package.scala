@@ -1,5 +1,5 @@
 package menthor
 
-package object documentclassifier {
+package object apps {
 	type Category = String
 }

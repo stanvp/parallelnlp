@@ -1,8 +1,8 @@
-package menthor.documentclassifier
+package menthor.apps
 
 object Analyzer {
-  def termFrequency(text: String) = {
-    text.split("(?m)\\s+").foldLeft[Map[String, Int]](Map()) { (frequency, rawTerm) =>
+  def termFrequency(text: String) : Map[String, Double] = {
+    text.split("(?m)\\s+").foldLeft[Map[String, Double]](Map()) { (frequency, rawTerm) =>
       val term = rawTerm.trim
       if (!term.matches("^[\\w']+$")) {
         frequency

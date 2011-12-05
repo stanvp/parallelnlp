@@ -5,12 +5,8 @@ import scala.io.Source
 import java.io.File
 import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
-import menthor.util.CollectionUtils._
+import menthor.classifier.maxent._
 import scala.util.Random
-import menthor.classifier.MaxentClassifier
-import menthor.documentclassifier.Document
-import menthor.documentclassifier.DocumentFeatureTrainer
-import menthor.documentclassifier.Analyzer
 import scala.collection.mutable.ListBuffer
 
 object MaxentClassifierMovieReview {
@@ -48,11 +44,11 @@ object MaxentClassifierMovieReview {
 	val categories = List("neg", "pos")
 	val samples = train.map(d => (d.category, d)).toList
 	
-	val naiveBayes = MaxentClassifier.trainSequential(categories, samples, new DocumentFeatureTrainer(stopWords))
+	val maxent = MaxentTrainerParallel.train(categories, samples, 2)
 	
 	var success = 0
 	for (d <- test) {
-	  val r = naiveBayes.classify(d)
+	  val r = maxent.classify(d)
 	  
 	  if (d.category == r._1) {
 	    success += 1
