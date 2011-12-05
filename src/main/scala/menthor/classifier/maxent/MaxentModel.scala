@@ -11,6 +11,4 @@ class MaxentModel[C, S <: Sample](
 		val parameters: Vector[Double]
 	) {
   def encode(cls: C, sample: S): Vector[Double] = DenseVector.tabulate[Double](features.size)(i => features(i)(cls, sample))
-  
-  def size: Int = features.size
 }

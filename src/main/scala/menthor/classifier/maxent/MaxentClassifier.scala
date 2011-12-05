@@ -35,7 +35,8 @@ case class MaxentClassifier[C, S <: Sample](val model: MaxentModel[C, S]) extend
       var total = 0.0
 
       features.foreachPair { (id, value) =>
-        total += model.parameters(id) * value
+        val parameter = model.parameters(id)
+        total += parameter * value
       }
 
       prob.put(cls, total)

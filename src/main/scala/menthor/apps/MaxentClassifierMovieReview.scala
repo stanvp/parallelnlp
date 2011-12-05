@@ -44,7 +44,8 @@ object MaxentClassifierMovieReview {
 	val categories = List("neg", "pos")
 	val samples = train.map(d => (d.category, d)).toList
 	
-	val maxent = MaxentTrainerParallel.train(categories, samples, 2)
+	val maxent = MaxentTrainerParallel.train(categories, samples, 3)
+	//val maxent = MaxentTrainer.train(categories, samples)
 	
 	var success = 0
 	for (d <- test) {

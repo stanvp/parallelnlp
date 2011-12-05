@@ -29,11 +29,11 @@ object MaxentTrainer {
     val model = new MaxentModel[C, S](
       classes,
       features,
-      DenseVector.zeros[Double](features.size))
+      DenseVector.ones[Double](features.size))
 
     val classifier = new MaxentClassifier[C, S](model)
 
-    val logEmpiricalFeatureFreqDistr = calculateFeatureFrequencyDistribution(classes, samples, model).map(Math.log)
+    val logEmpiricalFeatureFreqDistr = calculateFeatureFrequencyDistribution(classes, samples, model).map(x => if (x == 0.0) 0.0 else Math.log(x))
     
     val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.features.size)
 
@@ -49,11 +49,11 @@ object MaxentTrainer {
         }
       }
       
-      val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(Math.log)
+      val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
 
       classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
-      println("Weights: " + classifier.model.parameters)
+      //println("Parameters: " + classifier.model.parameters)
     }
 
     classifier
