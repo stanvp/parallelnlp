@@ -1,6 +1,7 @@
 package menthor.util
 
 import scalala.library.Numerics._
+import scalala.operators.Implicits._
 import scala.collection.mutable.HashMap
 
 /**

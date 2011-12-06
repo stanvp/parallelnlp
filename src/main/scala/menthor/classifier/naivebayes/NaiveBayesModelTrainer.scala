@@ -30,7 +30,7 @@ object NaiveBayesTrainer {
 
       classSamplesFreqDistr.increment(cls)
     }
-
+    
     val features = featureSelector.select(
       classes,
       featureFreqDistr.samples,

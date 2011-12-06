@@ -32,6 +32,8 @@ class ConditionalFrequencyDistribution[U,T] {
   
   def toMap : Map[U, Map[T, Double]] = distributions.mapValues(_.toMap).toMap
   
+  def samples = distributions.keys.toList
+  
   def apply(condition: U) = {
     distributions.get(condition) match {
       case Some(distribution) => distribution

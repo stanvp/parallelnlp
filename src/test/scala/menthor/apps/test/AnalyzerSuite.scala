@@ -19,8 +19,4 @@ class AnalyzerSuite extends FunSuite {
   
   val doc1 = new Document("test1", "label1", Analyzer.termFrequency("aa bb aa "))
   val doc2 = new Document("test2", "label2", Analyzer.termFrequency("cc dd dd aa bb"))
-  
-  test("global termFrequency") {
-	  assert(Document.termFrequency(List(doc1, doc2)) === Map("aa" -> 3.0, "bb" -> 2.0, "cc" -> 1.0, "dd" -> 2.0))
-  }
 } 

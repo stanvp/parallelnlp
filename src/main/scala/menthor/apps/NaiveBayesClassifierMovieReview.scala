@@ -12,12 +12,6 @@ import menthor.classifier.naivebayes.NaiveBayesTrainerParallel
 import scala.collection.mutable.ListBuffer
 
 object NaiveBayesClassifierMovieReview {
-  
-  val stopWords = {
-    val source = Source.fromURL(getClass.getResource("/common-english-words.txt"))
-    source.getLines().mkString(",").split(",").toSet
-  }
-  
   def load(folder: String): List[Document] = {
     val collection = new ListBuffer[Document]
 
@@ -35,7 +29,12 @@ object NaiveBayesClassifierMovieReview {
   }
 
   def main(args: Array[String]) {
-	val collection = Random.shuffle(load("/home/stanvp/workspace/semesterproject/movie_reviews"))
+    if (args.size < 2) {
+      println("Please specify [traning mode] and [corpus path]")
+      exit
+    }
+    
+	val collection = Random.shuffle(load(args(1)))
 	
 	// split the collection into training and test sets  
 	val testSize = (collection.size * 0.1).toInt
@@ -46,9 +45,13 @@ object NaiveBayesClassifierMovieReview {
 	val categories = List("neg", "pos")
 	val samples = train.map(d => (d.category, d)).toList
 	
-	val naiveBayes = NaiveBayesTrainerParallel.train(categories, samples, 1)
-	
-	//val naiveBayes = NaiveBayesTrainer.train(categories, samples)
+    var naiveBayes: NaiveBayesClassifier[Category, Document] = null
+
+    if (args.first == "parallel") {
+      naiveBayes = NaiveBayesTrainerParallel.train(categories, samples, 5)
+    } else if (args.first == "sequential") {
+      naiveBayes = NaiveBayesTrainer.train(categories, samples)
+    }	
 	
 	var success = 0
 	for (d <- test) {
