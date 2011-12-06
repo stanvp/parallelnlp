@@ -40,10 +40,10 @@ object MaxentTrainerParallel {
 
     val graph = new Graph[ProcessingResult]
 
-    val masters = (for (i <- 0 to partitions - 1) yield new MasterVertex[C, S]("master" + i, classes.first, samples.first._2, classifier, i, null)).toList
+    val masters = (for (i <- 0 to partitions - 1) yield new MasterVertex[C, S]("master" + i, classifier, i, null)).toList
 
     for (master <- masters) {
-      master.masters = masters
+      master.masters = masters.filterNot (_.label == master.label)
       graph.addVertex(master)
     }
 
@@ -99,7 +99,7 @@ object MaxentTrainerParallel {
   }
 }
 
-class MasterVertex[C, S <: Sample](label: String, cls: C, sample: S, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
+class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
   extends Vertex[ProcessingResult](label, new ProcessingResult) {
   
   var iteration = 0
@@ -137,15 +137,18 @@ class MasterVertex[C, S <: Sample](label: String, cls: C, sample: S, val classif
 
       classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
-      //println("Parameters: " + classifier.model.parameters)
-
       value.parameters = classifier.model.parameters
 
       for (master <- masters) yield Message(this, master, this.value)
     } then {
       iteration += 1
       println(label + ": Iteration " + iteration)
+      
       value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
+      
+      classifier.model.parameters(0 to classifier.model.parameters.size - 1) :=  value.parameters
+      
+      println("Parameters: " + value.parameters)
 
       for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
     } then {
@@ -200,9 +203,7 @@ class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S, val classif
       // master step
       List()
     } then {
-      val parameters = incoming.first.value.parameters
-
-      classifier.model.parameters(0 to classifier.model.parameters.size - 1) := parameters
+      classifier.model.parameters(0 to classifier.model.parameters.size - 1) := incoming.first.value.parameters
       List()
     }
   }

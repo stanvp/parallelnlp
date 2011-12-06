@@ -8,6 +8,7 @@ import menthor.util.FileUtils._
 import scala.util.Random
 import menthor.classifier.naivebayes.NaiveBayesClassifier
 import menthor.classifier.naivebayes.NaiveBayesTrainer
+import menthor.classifier.naivebayes.NaiveBayesTrainerParallel
 import scala.collection.mutable.ListBuffer
 
 object NaiveBayesClassifierMovieReview {
@@ -45,7 +46,9 @@ object NaiveBayesClassifierMovieReview {
 	val categories = List("neg", "pos")
 	val samples = train.map(d => (d.category, d)).toList
 	
-	val naiveBayes = NaiveBayesTrainer.train(categories, samples)
+	val naiveBayes = NaiveBayesTrainerParallel.train(categories, samples, 1)
+	
+	//val naiveBayes = NaiveBayesTrainer.train(categories, samples)
 	
 	var success = 0
 	for (d <- test) {
