@@ -8,7 +8,7 @@ import menthor.util.FrequencyDistribution
 
 object NaiveBayesTrainer {
   def train[C, S <: Sample](
-      classes: List[C], 
+      classes: List[C],
       samples: List[(C, S)], 
       featureSelector : FeatureSelector[C] = new FeatureSelector[C]): NaiveBayesClassifier[C, S] = {
     
