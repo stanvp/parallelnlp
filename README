@@ -1,0 +1,25 @@
+Parallelized implementation of Maximum Entropy and Naive Bayesian classifier. 
+
+In order to run the tests:
+
+1. Make sure that you have Java 1.6, Scala 2.9 and sbt 0.11
+
+2. Install Menthor
+	$ git clone git@github.com:stanvp/menthor.git
+	$ cd menthor
+	$ git checkout distributed
+	$ sbt
+	> project libmenthor
+	> set publishArtifact in packageDoc := false // avoid scaladoc generation error
+	> publish-local
+	 
+3. Get the project 
+	$ git clone https://github.com/stanvp/parallelnlp
+	$ cd parallelnlp	
+	$ sbt assembly
+	$ wget -c http://nltk.googlecode.com/svn/trunk/nltk_data/packages/corpora/movie_reviews.zip
+	$ unzip movie_reviews.zip	
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.NaiveBayesClassifierMovieReview parallel movie_reviews
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.MaxentClassifierMovieReview parallel movie_reviews
+	
+You can also use sequential version by passing sequential instead of parallel in the parameters above.  
