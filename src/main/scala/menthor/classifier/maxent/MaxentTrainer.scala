@@ -23,6 +23,10 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new Fe
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
+    
+    log("Started MaxentTrainer")
+    
+    log("Selecting features")
 
     val features = selectFeatures(classes, samples)
 
@@ -32,6 +36,8 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new Fe
       DenseVector.ones[Double](features.size))
 
     val classifier = new MaxentClassifier[C, S](model)
+    
+    log("Processing samples")
 
     val logEmpiricalFeatureFreqDistr = calculateFeatureFrequencyDistribution(classes, samples, model).map(x => if (x == 0.0) 0.0 else Math.log(x))
     
@@ -55,6 +61,8 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new Fe
 
       //println("Parameters: " + classifier.model.parameters)
     }
+    
+    log("Finished MaxentTrainer")
 
     classifier
   }

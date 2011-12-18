@@ -27,6 +27,10 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
+    
+    log("Started MaxentTrainerParallel")
+    
+    log("Selecting features")
 
     val features = selectFeatures(classes, samples)
 
@@ -36,6 +40,8 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
       DenseVector.zeros[Double](features.size))
 
     val classifier = new MaxentClassifier[C, S](model)
+    
+    log("Building the graph")
 
     val graph = new Graph[ProcessingResult]
 
@@ -55,10 +61,14 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
       }
     }
 
+    log("Processing samples")
+    
     graph.start()
     graph.iterate(iterations * 7)
 
     graph.terminate()
+    
+    log("Finished MaxentTrainerParallel")
 
     graph.vertices.first.asInstanceOf[SampleVertex[C, S]].classifier
   }

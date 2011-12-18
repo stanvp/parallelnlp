@@ -11,6 +11,8 @@ class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = ne
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
+    
+    log("Started NaiveBayesTrainer")
 
     val classFeatureFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
     val featureFreqDistr = new FrequencyDistribution[Feature]
@@ -19,6 +21,8 @@ class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = ne
     val classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
     val featureBinaryFreqDistr = new FrequencyDistribution[Feature]
 
+    log("Processing samples")
+    
     for ((cls, sample) <- samples) {
       for ((feature, value) <- sample.features) {
         classFeatureFreqDistr(cls).increment(feature, value)
@@ -31,6 +35,8 @@ class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = ne
       classSamplesFreqDistr.increment(cls)
     }
 
+    log("Selecting features")
+    
     val features = featureSelector.select(
       100,
       classes,
@@ -47,6 +53,8 @@ class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = ne
       classSamplesFreqDistr)
 
     val classifier = new NaiveBayesClassifier[C, S](model)
+    
+    log("Finished NaiveBayesTrainer")
 
     classifier
   }
