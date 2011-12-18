@@ -8,14 +8,16 @@ import menthor.apps.Document
 
 class NaiveBayesTrainerSuite extends FunSuite {
   
-  val classifier = NaiveBayesTrainer.train(
+  val trainer = new NaiveBayesTrainer[String, Document]
+  
+  val classifier = trainer.train(
       List("spam", "notspam"),
       List(
-    		  ("spam", new Document("doc1", "spam", Map("a" -> 2, "b" -> 1))),
-    		  ("notspam", new Document("doc2", "notspam", Map("c" -> 3))),
-    		  ("notspam", new Document("doc3", "notspam", Map("d" -> 2, "a" -> 1)))
+    		  ("spam", new Document("doc1", List("spam"), Map("a" -> 2, "b" -> 1))),
+    		  ("notspam", new Document("doc2", List("notspam"), Map("c" -> 3))),
+    		  ("notspam", new Document("doc3", List("notspam"), Map("d" -> 2, "a" -> 1)))
       )
-  )
+  ).asInstanceOf[NaiveBayesClassifier[String, Document]]
   
   test("train") {
     assert(classifier.model.classes === List("spam", "notspam"))

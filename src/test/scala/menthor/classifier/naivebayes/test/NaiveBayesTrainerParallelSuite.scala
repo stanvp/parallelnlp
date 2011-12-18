@@ -7,16 +7,16 @@ import menthor.classifier.naivebayes._
 import menthor.apps.Document
 
 class NaiveBayesTrainerParallelSuite extends FunSuite {
+  val trainer = new NaiveBayesTrainerParallel(3)
+  
+  import trainer._
+  
   val classes = List("spam", "notspam")
   val samples = List(
-    ("spam", new Document("doc1", "spam", Map("a" -> 2, "b" -> 1))),
-    ("notspam", new Document("doc2", "notspam", Map("c" -> 3))),
-    ("notspam", new Document("doc3", "notspam", Map("d" -> 2, "a" -> 1)))
+    ("spam", new Document("doc1", List("spam"), Map("a" -> 2, "b" -> 1))),
+    ("notspam", new Document("doc2", List("notspam"), Map("c" -> 3))),
+    ("notspam", new Document("doc3", List("notspam"), Map("d" -> 2, "a" -> 1)))
   )
-    
-  test("test") {
-    NaiveBayesTrainerParallel.train(classes, samples, 1)
-  }
 
   test("merge") {
     val value = new ProcessingResult[String]
@@ -67,7 +67,7 @@ class NaiveBayesTrainerParallelSuite extends FunSuite {
     pr2.classSamplesFreqDistr.increment("spam",1)    
     pr2.classSamplesFreqDistr.increment("notspam",2)    
     
-    NaiveBayesTrainerParallel.merge(value, List(pr1, pr2))
+    ProcessingResult.merge(value, List(pr1, pr2))
     
 //    println(value)
   }

@@ -12,19 +12,19 @@ import scalala.tensor.mutable._
 import scala.Math
 import menthor.util.ConditionalFrequencyDistribution
 import menthor.util.FrequencyDistribution
+import scala.util.logging.Logged
 
-object MaxentTrainer {
+class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C,S] with Logged {
   val iterations = 100
 
   /**
    * Train maximum entropy classifier
    */
-  def train[C, S <: Sample](
+  override def train(
     classes: List[C],
-    samples: List[(C, S)],
-    featureSelector: FeatureSelector[C] = new FeatureSelector[C]): MaxentClassifier[C, S] = {
+    samples: Iterable[(C, S)]): Classifier[C, S] = {
 
-    val features = selectFeatures(classes, samples, featureSelector)
+    val features = selectFeatures(classes, samples)
 
     val model = new MaxentModel[C, S](
       classes,
@@ -38,7 +38,7 @@ object MaxentTrainer {
     val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.features.size)
 
     for (n <- 1 to iterations) {
-      println("Iteration: " + n)
+      log("Iteration: " + n)
       
       estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
@@ -61,7 +61,7 @@ object MaxentTrainer {
 
   def calculateFeatureFrequencyDistribution[C, S <: Sample](
     classes: List[C],
-    samples: List[(C, S)],
+    samples: Iterable[(C, S)],
     model: MaxentModel[C, S]): Vector[Double] = {
 
     val featureFreqDistr = DenseVector.zeros[Double](model.features.size)
@@ -73,10 +73,9 @@ object MaxentTrainer {
     featureFreqDistr
   }
 
-  def selectFeatures[C, S <: Sample](
+  def selectFeatures(
     classes: List[C],
-    samples: List[(C, S)],
-    featureSelector: FeatureSelector[C] = new FeatureSelector[C]): List[MaxentFeatureFunction[C, S]] = {
+    samples: Iterable[(C, S)]): List[MaxentFeatureFunction[C, S]] = {
 
     val featureFreqDistr = new FrequencyDistribution[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
@@ -95,11 +94,12 @@ object MaxentTrainer {
     }
 
     val features = featureSelector.select(
+      100,
       classes,
       featureFreqDistr.samples,
       classSamplesFreqDistr,
       classFeatureBinaryFreqDistr,
-      featureBinaryFreqDistr).slice(0, 100)
+      featureBinaryFreqDistr)
 
     for (
       c <- classes;

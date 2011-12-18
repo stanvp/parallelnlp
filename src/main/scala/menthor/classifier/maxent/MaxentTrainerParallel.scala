@@ -16,20 +16,19 @@ import scalala.tensor.mutable._
 import scala.Math
 import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
+import scala.util.logging.Logged
 
-object MaxentTrainerParallel {
+class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C, S] with Logged {
   val iterations = 100
 
   /**
    * Train maximum entropy classifier
    */
-  def train[C, S <: Sample](
+  override def train(
     classes: List[C],
-    samples: List[(C, S)],
-    partitions: Int,
-    featureSelector: FeatureSelector[C] = new FeatureSelector[C]): MaxentClassifier[C, S] = {
+    samples: Iterable[(C, S)]): Classifier[C, S] = {
 
-    val features = selectFeatures(classes, samples, featureSelector)
+    val features = selectFeatures(classes, samples)
 
     val model = new MaxentModel[C, S](
       classes,
@@ -43,7 +42,7 @@ object MaxentTrainerParallel {
     val masters = (for (i <- 0 to partitions - 1) yield new MasterVertex[C, S]("master" + i, classifier, i, null)).toList
 
     for (master <- masters) {
-      master.masters = masters.filterNot (_.label == master.label)
+      master.masters = masters.filterNot(_.label == master.label)
       graph.addVertex(master)
     }
 
@@ -64,10 +63,9 @@ object MaxentTrainerParallel {
     graph.vertices.first.asInstanceOf[SampleVertex[C, S]].classifier
   }
 
-  def selectFeatures[C, S <: Sample](
+  def selectFeatures(
     classes: List[C],
-    samples: List[(C, S)],
-    featureSelector: FeatureSelector[C] = new FeatureSelector[C]): List[MaxentFeatureFunction[C, S]] = {
+    samples: Iterable[(C, S)]): List[MaxentFeatureFunction[C, S]] = {
 
     val featureFreqDistr = new FrequencyDistribution[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
@@ -86,132 +84,133 @@ object MaxentTrainerParallel {
     }
 
     val features = featureSelector.select(
+      100,
       classes,
       featureFreqDistr.samples,
       classSamplesFreqDistr,
       classFeatureBinaryFreqDistr,
-      featureBinaryFreqDistr).slice(0, 100)
+      featureBinaryFreqDistr)
 
     for (
       c <- classes;
       (f, ig) <- features
     ) yield new MaxentFeatureFunction[C, S](f, c)
   }
-}
 
-class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
-  extends Vertex[ProcessingResult](label, new ProcessingResult) {
-  
-  var iteration = 0
+  class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
+    extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
-  val model = classifier.model
+    var iteration = 0
 
-  var logEmpiricalFeatureFreqDistr: Vector[Double] = _
-  var logEstimatedFeatureFreqDistr: Vector[Double] = _
+    val model = classifier.model
 
-  def update(): Substep[ProcessingResult] = {
-    {
-      // superstep == 0 - sample step
-      List()
-    } then {
-      if (superstep == 1) {
-        val empiricalFeatureFreqDistr = incoming.map(_.value.empiricalFeatureFreqDistr).reduce { (x, y) => x + y }
+    var logEmpiricalFeatureFreqDistr: Vector[Double] = _
+    var logEstimatedFeatureFreqDistr: Vector[Double] = _
 
-        logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
-        value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
+    def update(): Substep[ProcessingResult] = {
+      {
+        // superstep == 0 - sample step
+        List()
+      } then {
+        if (superstep == 1) {
+          val empiricalFeatureFreqDistr = incoming.map(_.value.empiricalFeatureFreqDistr).reduce { (x, y) => x + y }
+
+          logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
+          value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
+
+          for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
+        } else {
+          List()
+        }
+      } then {
+        // superstep == 2 sample step
+        List()
+      } then {
+        // sample step
+        List()
+      } then {
+        val estimatedFeatureFreqDistr = incoming.map(_.value.estimatedFeatureFreqDistr).reduce { (x, y) => x + y }
+
+        logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
+
+        classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
+
+        value.parameters = classifier.model.parameters
+
+        for (master <- masters) yield Message(this, master, this.value)
+      } then {
+        iteration += 1
+        log(label + ": Iteration " + iteration)
+
+        value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
+
+        classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
+
+        //log("Parameters: " + value.parameters)
 
         for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
-      } else {
+      } then {
+        // sample step
         List()
       }
-    } then {
-      // superstep == 2 sample step
-      List()
-    } then {
-      // sample step
-      List()
-    } then {
-      val estimatedFeatureFreqDistr = incoming.map(_.value.estimatedFeatureFreqDistr).reduce { (x, y) => x + y }
-
-      logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
-
-      classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
-
-      value.parameters = classifier.model.parameters
-
-      for (master <- masters) yield Message(this, master, this.value)
-    } then {
-      iteration += 1
-      println(label + ": Iteration " + iteration)
-      
-      value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
-      
-      classifier.model.parameters(0 to classifier.model.parameters.size - 1) :=  value.parameters
-      
-      println("Parameters: " + value.parameters)
-
-      for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
-    } then {
-      // sample step
-      List()
     }
   }
-}
 
-class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
-  extends Vertex[ProcessingResult](label, new ProcessingResult) {
+  class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
+    extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
-  val model = classifier.model
+    val model = classifier.model
 
-  var logEmpiricalFeatureFreqDistr: Vector[Double] = _
-  var logEstimatedFeatureFreqDistr: Vector[Double] = _
+    var logEmpiricalFeatureFreqDistr: Vector[Double] = _
+    var logEstimatedFeatureFreqDistr: Vector[Double] = _
 
-  def update(): Substep[ProcessingResult] = {
-    {
-      if (superstep == 0) {
-        value.empiricalFeatureFreqDistr = model.encode(cls, sample)
+    def update(): Substep[ProcessingResult] = {
+      {
+        if (superstep == 0) {
+          value.empiricalFeatureFreqDistr = model.encode(cls, sample)
 
-        for (neighbor <- masters) yield Message(this, neighbor, this.value)
-      } else {
+          for (neighbor <- masters) yield Message(this, neighbor, this.value)
+        } else {
+          List()
+        }
+      } then {
+        // superstep == 1 - masters step
+        List()
+      } then {
+        if (superstep == 2) {
+          logEmpiricalFeatureFreqDistr = incoming.first.value.logEmpiricalFeatureFreqDistr
+          value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
+        }
+        List()
+      } then {
+        val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.features.size)
+
+        val dist = classifier.probClassify(sample)
+
+        for ((distcls, prob) <- dist) {
+          estimatedFeatureFreqDistr += (model.encode(distcls, sample) * Math.exp(prob))
+        }
+
+        value.estimatedFeatureFreqDistr = estimatedFeatureFreqDistr
+
+        for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
+      } then {
+        // master step
+        List()
+      } then {
+        // master step
+        List()
+      } then {
+        classifier.model.parameters(0 to classifier.model.parameters.size - 1) := incoming.first.value.parameters
         List()
       }
-    } then {
-      // superstep == 1 - masters step
-      List()
-    } then {
-      if (superstep == 2) {
-        logEmpiricalFeatureFreqDistr = incoming.first.value.logEmpiricalFeatureFreqDistr
-        value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
-      }
-      List()
-    } then {
-      val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.features.size)
-
-      val dist = classifier.probClassify(sample)
-
-      for ((distcls, prob) <- dist) {
-        estimatedFeatureFreqDistr += (model.encode(distcls, sample) * Math.exp(prob))
-      }
-
-      value.estimatedFeatureFreqDistr = estimatedFeatureFreqDistr
-
-      for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
-    } then {
-      // master step
-      List()
-    } then {
-      // master step
-      List()
-    } then {
-      classifier.model.parameters(0 to classifier.model.parameters.size - 1) := incoming.first.value.parameters
-      List()
     }
   }
-}
 
-case class ProcessingResult {
-  var empiricalFeatureFreqDistr: Vector[Double] = _
-  var estimatedFeatureFreqDistr: Vector[Double] = _
-  var logEmpiricalFeatureFreqDistr: Vector[Double] = _
-  var parameters: Vector[Double] = _
+  case class ProcessingResult {
+    var empiricalFeatureFreqDistr: Vector[Double] = _
+    var estimatedFeatureFreqDistr: Vector[Double] = _
+    var logEmpiricalFeatureFreqDistr: Vector[Double] = _
+    var parameters: Vector[Double] = _
+  }
 }

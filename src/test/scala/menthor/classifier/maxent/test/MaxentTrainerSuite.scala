@@ -11,13 +11,15 @@ class MaxentTrainerSuite extends FunSuite {
   val classes = List("spam", "notspam")
 
   val samples = List(
-    ("spam", new Document("doc1", "spam", Map("a" -> 2, "b" -> 1))),
-    ("notspam", new Document("doc2", "notspam", Map("c" -> 3))),
-    ("notspam", new Document("doc3", "notspam", Map("d" -> 2, "a" -> 1))),
-    ("spam", new Document("doc4", "spam", Map("b" -> 1)))
+    ("spam", new Document("doc1", List("spam"), Map("a" -> 2, "b" -> 1))),
+    ("notspam", new Document("doc2", List("notspam"), Map("c" -> 3))),
+    ("notspam", new Document("doc3", List("notspam"), Map("d" -> 2, "a" -> 1))),
+    ("spam", new Document("doc4", List("spam"), Map("b" -> 1)))
   )
+  
+  val trainer = new MaxentTrainer[String, Document]
 
-  val features = MaxentTrainer.selectFeatures(classes, samples)
+  val features = trainer.selectFeatures(classes, samples)
 
   val model = new MaxentModel(
     classes,
@@ -29,6 +31,6 @@ class MaxentTrainerSuite extends FunSuite {
   }
   
   test("calculateEmpiricalDistribution") {
-    assert(MaxentTrainer.calculateFeatureFrequencyDistribution(classes, samples, model).toList === List(2.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0))
+    assert(trainer.calculateFeatureFrequencyDistribution(classes, samples, model).toList === List(2.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0))
   }
 } 

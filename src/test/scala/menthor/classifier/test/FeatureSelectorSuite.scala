@@ -34,6 +34,7 @@ class FeatureSelectorSuite extends FunSuite {
 
   test("select") {
     val result = fs.select(
+      1,
       List("spam", "notspam"),
       List("cheap"),
       classSamplesFreqDistr, 
@@ -46,12 +47,14 @@ class FeatureSelectorSuite extends FunSuite {
   
   test("test") {
     val result = fs.select(
+      2,
       List("spam", "notspam"),
       List("cheap", "buy"),
       classSamplesFreqDistr, 
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr
     )
+    println(result)
   }  
   
 } 

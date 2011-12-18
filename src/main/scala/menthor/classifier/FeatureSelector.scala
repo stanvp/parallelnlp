@@ -4,6 +4,7 @@ import menthor.util.ProbabilityDistribution
 import menthor.util.ConditionalProbabilityDistribution
 import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
+import menthor.util.CollectionUtils._
 
 /**
  * Information gain based feature selector
@@ -16,6 +17,7 @@ class FeatureSelector[C] {
    * Computes the information gain and selects the best features
    */
   def select(
+    N: Int,
     classes: List[C],
     features: List[Feature],
     classSamplesFreqDistr: FrequencyDistribution[C],
@@ -27,7 +29,7 @@ class FeatureSelector[C] {
       p * Math.log(p)
     }.sum
 
-    features.map { feature =>
+    val featuresGains = features.map { feature =>
       var classFeatureEntropy = 0.0
       
       for (w <- List(1, 0)) {
@@ -45,6 +47,8 @@ class FeatureSelector[C] {
       
       val ig = classEntropy + classFeatureEntropy
       (feature, ig)
-    }.sort((e1, e2) => (e1._2 compareTo e2._2) > 0)
+    }
+    
+    topNs(N, featuresGains, (x : (Feature, Double)) => x._2)
   }
 }

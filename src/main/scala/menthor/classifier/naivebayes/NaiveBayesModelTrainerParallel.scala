@@ -16,13 +16,16 @@ import scalala.operators.Implicits._
 import scalala.scalar._
 import scalala.tensor.dense._
 import scalala.tensor.mutable._
+import scala.util.logging.Logged
 
-object NaiveBayesTrainerParallel {
-  def train[C, S <: Sample](
+class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C, S] with Logged {
+  override def train(
     classes: List[C],
-    samples: List[(C, S)],
-    partitions: Int,
-    featureSelector: FeatureSelector[C] = new FeatureSelector[C]): NaiveBayesClassifier[C, S] = {
+    samples: Iterable[(C, S)]): NaiveBayesClassifier[C, S] = {
+
+    log("Started NaiveBayesTrainerParallel")
+
+    log("Building the graph")
 
     val graph = new Graph[ProcessingResult[C]]
 
@@ -40,21 +43,28 @@ object NaiveBayesTrainerParallel {
         masters(i).connectTo(vertex)
       }
     }
+    
+    log("Processing samples")
 
     graph.start()
     graph.iterate(2)
 
     graph.terminate()
 
-    val value = new ProcessingResult[C]
-    merge(value, masters.map(_.value))
+    log("Aggregating results")
 
+    val value = new ProcessingResult[C]
+    ProcessingResult.merge(value, masters.map(_.value))
+
+    log("Selecting features")
+    
     val features = featureSelector.select(
+      100,
       classes,
       value.featureFreqDistr.samples,
       value.classSamplesFreqDistr,
       value.classFeatureBinaryFreqDistr,
-      value.featureBinaryFreqDistr).slice(0, 100)
+      value.featureBinaryFreqDistr)
 
     val model = new NaiveBayesModel[C, S](
       classes,
@@ -65,72 +75,76 @@ object NaiveBayesTrainerParallel {
 
     val classifier = new NaiveBayesClassifier[C, S](model)
 
+    log("Finished NaiveBayesTrainerParallel")
+
     classifier
   }
 
-  def merge[C](v: ProcessingResult[C], results: List[ProcessingResult[C]]) {
-    for (r <- results) {
-      for (cls <- r.classSamplesFreqDistr.samples) {
-        for (feature <- r.featureFreqDistr.samples) {
-          v.classFeatureFreqDistr(cls).increment(feature, r.classFeatureFreqDistr(cls).count(feature))
+  class MasterVertex[C, S <: Sample](label: String)
+    extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
 
-          v.classFeatureBinaryFreqDistr(cls).increment(feature, r.classFeatureBinaryFreqDistr(cls).count(feature))
+    def update(): Substep[ProcessingResult[C]] = {
+      {
+        // sample step
+        List()
+      } then {
+        ProcessingResult.merge(value, incoming.map(_.value))
+        List()
+      }
+    }
+  }
+
+  class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S)
+    extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
+
+    def update(): Substep[ProcessingResult[C]] = {
+      {
+        for ((feature, v) <- sample.features) {
+          value.classFeatureFreqDistr(cls).increment(feature, v)
+          value.featureFreqDistr.increment(feature, v)
+
+          value.classFeatureBinaryFreqDistr(cls).increment(feature)
+          value.featureBinaryFreqDistr.increment(feature)
         }
-        
-        v.classSamplesFreqDistr.increment(cls, r.classSamplesFreqDistr.count(cls))
-      }
-      
-      for (feature <- r.featureFreqDistr.samples) {
-        v.featureBinaryFreqDistr.increment(feature, r.featureBinaryFreqDistr.count(feature))
-        v.featureFreqDistr.increment(feature, r.featureFreqDistr.count(feature))
+
+        value.classSamplesFreqDistr.increment(cls)
+
+        for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
+      } then {
+        // master step
+        List()
       }
     }
   }
 
-}
+  class ProcessingResult[C] {
+    var classFeatureFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
+    var featureFreqDistr = new FrequencyDistribution[Feature]
 
-class MasterVertex[C, S <: Sample](label: String)
-  extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
-
-  def update(): Substep[ProcessingResult[C]] = {
-    {
-      // sample step
-      List()
-    } then {
-      NaiveBayesTrainerParallel.merge(value, incoming.map(_.value))
-      List()
-    }
+    var classSamplesFreqDistr = new FrequencyDistribution[C]
+    var classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
+    var featureBinaryFreqDistr = new FrequencyDistribution[Feature]
   }
-}
 
-class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S)
-  extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
+  object ProcessingResult {
+    def merge[C](v: ProcessingResult[C], results: List[ProcessingResult[C]]) {
+      for (r <- results) {
+        for (cls <- r.classSamplesFreqDistr.samples) {
+          for (feature <- r.featureFreqDistr.samples) {
+            v.classFeatureFreqDistr(cls).increment(feature, r.classFeatureFreqDistr(cls).count(feature))
 
-  def update(): Substep[ProcessingResult[C]] = {
-    {
-      for ((feature, v) <- sample.features) {
-        value.classFeatureFreqDistr(cls).increment(feature, v)
-        value.featureFreqDistr.increment(feature, v)
+            v.classFeatureBinaryFreqDistr(cls).increment(feature, r.classFeatureBinaryFreqDistr(cls).count(feature))
+          }
 
-        value.classFeatureBinaryFreqDistr(cls).increment(feature)
-        value.featureBinaryFreqDistr.increment(feature)
+          v.classSamplesFreqDistr.increment(cls, r.classSamplesFreqDistr.count(cls))
+        }
+
+        for (feature <- r.featureFreqDistr.samples) {
+          v.featureBinaryFreqDistr.increment(feature, r.featureBinaryFreqDistr.count(feature))
+          v.featureFreqDistr.increment(feature, r.featureFreqDistr.count(feature))
+        }
       }
-
-      value.classSamplesFreqDistr.increment(cls)
-
-      for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
-    } then {
-      // master step
-      List()
     }
   }
-}
 
-class ProcessingResult[C] {
-  var classFeatureFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
-  var featureFreqDistr = new FrequencyDistribution[Feature]
-
-  var classSamplesFreqDistr = new FrequencyDistribution[C]
-  var classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
-  var featureBinaryFreqDistr = new FrequencyDistribution[Feature]
 }
