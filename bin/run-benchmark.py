@@ -29,7 +29,7 @@ for numCores in [2,3,4,5,6,7,8]:
 
     for run in range(5):
         start = time()
-        cmd = "time scala -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.WikipediaClassifier %s %s %s" % (algorithm, trainingmode, corpusPath)
+        cmd = "time scala -cp parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.WikipediaClassifier %s %s %s" % (algorithm, trainingmode, corpusPath)
         print 'running command: %s' % cmd
 
         os.system(cmd)
