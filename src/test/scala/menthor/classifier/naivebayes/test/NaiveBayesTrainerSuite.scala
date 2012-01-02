@@ -5,10 +5,11 @@ import menthor.classifier._
 import menthor.util._
 import menthor.classifier.naivebayes._
 import menthor.apps.Document
+import menthor.classifier.featureselector.IGFeatureSelector
 
 class NaiveBayesTrainerSuite extends FunSuite {
   
-  val trainer = new NaiveBayesTrainer[String, Document]
+  val trainer = new NaiveBayesTrainer[String, Document](new IGFeatureSelector[String](100))
   
   val classifier = trainer.train(
       List("spam", "notspam"),

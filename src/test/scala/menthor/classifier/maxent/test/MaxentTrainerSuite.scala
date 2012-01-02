@@ -6,6 +6,7 @@ import menthor.util._
 import menthor.classifier.maxent._
 import menthor.apps.Document
 import scalala.tensor.dense.DenseVector
+import menthor.classifier.featureselector.IGFeatureSelector
 
 class MaxentTrainerSuite extends FunSuite {
   val classes = List("spam", "notspam")
@@ -17,7 +18,7 @@ class MaxentTrainerSuite extends FunSuite {
     ("spam", new Document("doc4", List("spam"), Map("b" -> 1)))
   )
   
-  val trainer = new MaxentTrainer[String, Document]
+  val trainer = new MaxentTrainer[String, Document](new IGFeatureSelector[String](100))
 
   val features = trainer.selectFeatures(classes, samples)
 

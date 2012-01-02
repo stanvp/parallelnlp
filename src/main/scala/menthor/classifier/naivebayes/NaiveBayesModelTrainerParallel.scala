@@ -18,7 +18,7 @@ import scalala.tensor.dense._
 import scalala.tensor.mutable._
 import scala.util.logging.Logged
 
-class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C, S] with Logged {
+class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): NaiveBayesClassifier[C, S] = {
@@ -59,7 +59,6 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector
     log("Selecting features")
     
     val features = featureSelector.select(
-      100,
       classes,
       value.featureFreqDistr.samples,
       value.classSamplesFreqDistr,

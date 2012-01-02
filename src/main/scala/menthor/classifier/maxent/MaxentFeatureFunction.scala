@@ -7,7 +7,7 @@ class MaxentFeatureFunction[C, S <: Sample](feature: Feature, cls: C) extends Fe
     if (cls != sampleCls || value <= 0) {
       0.0
     } else {
-      if (sample.total == 0) 0 else sample.features.getOrElse(feature, 0.0) / sample.total
+      if (sample.total == 0) 0 else value / sample.total
     }
   }
   

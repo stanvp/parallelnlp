@@ -11,10 +11,10 @@ import menthor.classifier.naivebayes.NaiveBayesTrainer
 import menthor.classifier.naivebayes.NaiveBayesTrainerParallel
 import menthor.classifier.maxent.MaxentTrainer
 import menthor.classifier.maxent.MaxentTrainerParallel
-
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.HashSet
 import scala.util.logging.ConsoleLogger
+import menthor.classifier.featureselector.IGFeatureSelector
 
 object WikipediaClassifier {
 
@@ -66,20 +66,22 @@ object WikipediaClassifier {
     val trainer = args.first match {
       case "maxent" =>
         args(1) match {
-          case "parallel" => new MaxentTrainerParallel[Category, Document](3) with ConsoleLogger
-          case "sequential" => new MaxentTrainer[Category, Document] with ConsoleLogger
+          case "parallel" => new MaxentTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
       case "naivebayes" =>
         args(1) match {
-          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](3) with ConsoleLogger
-          case "sequential" => new NaiveBayesTrainer[Category, Document] with ConsoleLogger
+          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
       case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")
     }
 
     val classifier = trainer.train(categories, samples)
+    
+    println("Evaluation")
     
     val test = load(args(2) + "/test")
 

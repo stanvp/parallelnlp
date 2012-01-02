@@ -3,6 +3,7 @@ package menthor.classifier.test
 import org.scalatest.FunSuite
 
 import menthor.classifier._
+import menthor.classifier.featureselector._
 import menthor.util._
 
 class FeatureSelectorSuite extends FunSuite {
@@ -30,30 +31,28 @@ class FeatureSelectorSuite extends FunSuite {
   featureBinaryFreqDistr.increment("dinner", 1)
   featureBinaryFreqDistr.increment("the", 10)
 
-  val fs = new FeatureSelector[String]
+  val fs = new IGFeatureSelector[String](100)
 
   test("select") {
     val result = fs.select(
-      1,
       List("spam", "notspam"),
       List("cheap"),
       classSamplesFreqDistr, 
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr
-    )
+    ).slice(0,0)
     
     assert(result === List(("cheap", 0.2863530522712403)))
   }
   
   test("test") {
     val result = fs.select(
-      2,
       List("spam", "notspam"),
       List("cheap", "buy"),
       classSamplesFreqDistr, 
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr
-    )
+    ).slice(0,1)
     println(result)
   }  
   

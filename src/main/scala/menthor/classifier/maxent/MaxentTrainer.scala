@@ -9,12 +9,13 @@ import scalala.operators.Implicits._
 import scalala.scalar._
 import scalala.tensor.dense._
 import scalala.tensor.mutable._
-import scala.Math
+import java.lang.Math
 import menthor.util.ConditionalFrequencyDistribution
 import menthor.util.FrequencyDistribution
 import scala.util.logging.Logged
+import scalala.tensor.sparse.SparseVector
 
-class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C,S] with Logged {
+class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends Trainer[C,S] with Logged {
   val iterations = 100
 
   /**
@@ -30,18 +31,18 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new Fe
 
     val features = selectFeatures(classes, samples)
 
-    val model = new MaxentModel[C, S](
+    val model = new MaxentModelCached[C, S](
       classes,
       features,
       DenseVector.ones[Double](features.size))
-
+      
     val classifier = new MaxentClassifier[C, S](model)
     
     log("Processing samples")
 
     val logEmpiricalFeatureFreqDistr = calculateFeatureFrequencyDistribution(classes, samples, model).map(x => if (x == 0.0) 0.0 else Math.log(x))
     
-    val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.features.size)
+    val estimatedFeatureFreqDistr = SparseVector.zeros[Double](model.features.size)
 
     for (n <- 1 to iterations) {
       log("Iteration: " + n)
@@ -64,7 +65,7 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new Fe
     
     log("Finished MaxentTrainer")
 
-    classifier
+    new MaxentClassifier[C, S](new MaxentModel[C,S](model.classes, model.features, model.parameters))
   }
 
   def calculateFeatureFrequencyDistribution[C, S <: Sample](
@@ -102,7 +103,6 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new Fe
     }
 
     val features = featureSelector.select(
-      100,
       classes,
       featureFreqDistr.samples,
       classSamplesFreqDistr,

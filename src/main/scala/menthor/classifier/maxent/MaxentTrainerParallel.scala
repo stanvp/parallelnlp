@@ -18,7 +18,7 @@ import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
 import scala.util.logging.Logged
 
-class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C, S] with Logged {
+class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
   val iterations = 100
 
   /**
@@ -94,7 +94,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
     }
 
     val features = featureSelector.select(
-      100,
       classes,
       featureFreqDistr.samples,
       classSamplesFreqDistr,

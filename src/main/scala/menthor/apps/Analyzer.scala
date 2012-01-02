@@ -1,5 +1,7 @@
 package menthor.apps
+
 import scala.io.Source
+import scala.collection.immutable.HashMap
 
 object Analyzer {
   
@@ -9,8 +11,8 @@ object Analyzer {
   }
   
   def termFrequency(text: String) : Map[String, Double] = {
-    text.split("(?m)\\s+").foldLeft[Map[String, Double]](Map()) { (frequency, rawTerm) =>
-      val term = rawTerm.trim
+    text.split("(?m)\\s+").foldLeft[HashMap[String, Double]](HashMap()) { (frequency, rawTerm) =>
+      val term = rawTerm.trim.toLowerCase
       if (!term.matches("^[\\w']+$") || term.size < 3 || stopWords.contains(term)) {
         frequency
       } else {

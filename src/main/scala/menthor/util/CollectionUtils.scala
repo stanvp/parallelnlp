@@ -8,12 +8,12 @@ object CollectionUtils {
     xs foreach { e =>
       if (len < n || f(e) > min) {
         ss = (e :: ss).sort((e1, e2) => (f(e1) compareTo f(e2)) > 0)
-        min = f(ss.head)
+        min = f(ss.last)
         len += 1
       }
       if (len > n) {
-        ss = ss.tail
-        min = f(ss.head)
+        ss = ss.init
+        min = f(ss.last)
         len -= 1
       }
     }

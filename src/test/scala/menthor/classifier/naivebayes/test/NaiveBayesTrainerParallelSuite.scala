@@ -5,9 +5,10 @@ import menthor.classifier._
 import menthor.util._
 import menthor.classifier.naivebayes._
 import menthor.apps.Document
+import menthor.classifier.featureselector.IGFeatureSelector
 
 class NaiveBayesTrainerParallelSuite extends FunSuite {
-  val trainer = new NaiveBayesTrainerParallel(3)
+  val trainer = new NaiveBayesTrainerParallel(3, new IGFeatureSelector[String](100))
   
   import trainer._
   

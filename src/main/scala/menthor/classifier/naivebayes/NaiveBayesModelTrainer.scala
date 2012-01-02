@@ -7,7 +7,7 @@ import menthor.util.ConditionalFrequencyDistribution
 import menthor.util.FrequencyDistribution
 import scala.util.logging.Logged
 
-class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = new FeatureSelector[C]) extends Trainer[C, S] with Logged {
+class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
@@ -38,7 +38,6 @@ class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C] = ne
     log("Selecting features")
     
     val features = featureSelector.select(
-      100,
       classes,
       featureFreqDistr.samples,
       classSamplesFreqDistr,
