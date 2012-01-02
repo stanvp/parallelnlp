@@ -46,7 +46,7 @@ object WikipediaClassifier {
           Some(document)
         } else {
           None
-        }       
+        }
     }
   }
 
@@ -55,8 +55,11 @@ object WikipediaClassifier {
       println("Please specify [algorithm] [traning mode] [wikipedia corpus path]")
       println("algorithm can be: maxent or naivebayes")
       println("traning mode can be: parallel or sequential")
+      println("evaluation be: true or false, default is false")
       exit
     }
+    
+    val evaluation = if (args.length < 4) false else args(3).toBoolean
 
     val train = load(args(2) + "/train")    
 
@@ -80,22 +83,27 @@ object WikipediaClassifier {
     }
 
     val classifier = trainer.train(categories, samples)
-    
-    println("Evaluation")
-    
-    val test = load(args(2) + "/test")
 
-    var success = 0
-    for (d <- test) {
-      val r = classifier.classify(d)
+    if (evaluation == true) {
 
-      if (d.categories.contains(r._1)) {
-        success += 1
+      println("Evaluation")
+
+      val test = load(args(2) + "/test")
+
+      var success = 0
+      for (d <- test) {
+        val r = classifier.classify(d)
+
+        if (d.categories.contains(r._1)) {
+          success += 1
+        }
       }
+
+      println("Total: " + test.size)
+      println("Success: " + success)
+      println("Percent: " + ((success / test.size.toFloat) * 100) + " %")
     }
 
-    println("Total: " + test.size)
-    println("Success: " + success)
-    println("Percent: " + ((success / test.size.toFloat) * 100) + " %")
+    println("Done.")
   }
 }
