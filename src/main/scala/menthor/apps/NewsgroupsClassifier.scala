@@ -78,7 +78,7 @@ object NewsgroupsClassifier {
         }
       case "naivebayes" =>
         args(1) match {
-          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](10, new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }

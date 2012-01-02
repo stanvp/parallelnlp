@@ -28,7 +28,7 @@ class IGFeatureSelector[C](N: Int) extends FeatureSelector[C] {
       p * Math.log(p)
     }.sum
 
-    val featuresGains = features.map { feature =>
+    val featuresGains = features.par.map { feature =>
       var classFeatureEntropy = 0.0
       
       for (w <- List(1, 0)) {
@@ -48,6 +48,6 @@ class IGFeatureSelector[C](N: Int) extends FeatureSelector[C] {
       (feature, ig)
     }
     
-    topNs(N, featuresGains, (x : (Feature, Double)) => x._2)
+    topNs(N, featuresGains)(Ordering[Double].on(_._2)).toList
   }
 }

@@ -15,7 +15,7 @@ import menthor.util.FrequencyDistribution
 import scala.util.logging.Logged
 import scalala.tensor.sparse.SparseVector
 
-class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends Trainer[C,S] with Logged {
+class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
   val iterations = 100
 
   /**
@@ -24,9 +24,9 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
-    
+
     log("Started MaxentTrainer")
-    
+
     log("Selecting features")
 
     val features = selectFeatures(classes, samples)
@@ -35,18 +35,18 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
       classes,
       features,
       DenseVector.ones[Double](features.size))
-      
+
     val classifier = new MaxentClassifier[C, S](model)
-    
+
     log("Processing samples")
 
     val logEmpiricalFeatureFreqDistr = calculateFeatureFrequencyDistribution(classes, samples, model).map(x => if (x == 0.0) 0.0 else Math.log(x))
-    
+
     val estimatedFeatureFreqDistr = SparseVector.zeros[Double](model.features.size)
 
     for (n <- 1 to iterations) {
       log("Iteration: " + n)
-      
+
       estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
       for ((_, sample) <- samples) {
@@ -55,17 +55,17 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
           estimatedFeatureFreqDistr += (model.encode(distcls, sample) * Math.exp(prob))
         }
       }
-      
+
       val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
 
       classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
       //println("Parameters: " + classifier.model.parameters)
     }
-    
+
     log("Finished MaxentTrainer")
 
-    new MaxentClassifier[C, S](new MaxentModel[C,S](model.classes, model.features, model.parameters))
+    new MaxentClassifier[C, S](new MaxentModel[C, S](model.classes, model.features, model.parameters))
   }
 
   def calculateFeatureFrequencyDistribution[C, S <: Sample](

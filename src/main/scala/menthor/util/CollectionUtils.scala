@@ -1,7 +1,8 @@
 package menthor.util
+import scala.collection.parallel.ParIterable
 
 object CollectionUtils {
-  def topNs[T](n: Int, xs: TraversableOnce[T], f : T => Double) = {
+  def topNs[T](n: Int, xs: TraversableOnce[T], f: T => Double) = {
     var ss = List[T]()
     var min = Double.MaxValue
     var len = 0
@@ -18,5 +19,17 @@ object CollectionUtils {
       }
     }
     ss
+  }
+
+  def topNs[T](n: Int, iter: ParIterable[T])(implicit ord: Ordering[T]): ParIterable[T] = {
+    def partitionMax(acc: ParIterable[T], it: ParIterable[T]): ParIterable[T] = {
+      val max = it.max(ord)
+      val (nextElems, rest) = it.partition(ord.gteq(_, max))
+      val maxElems = acc ++ nextElems
+      if (maxElems.size >= n || rest.isEmpty) maxElems.take(n)
+      else partitionMax(maxElems, rest)
+    }
+    if (iter.isEmpty) iter.take(0)
+    else partitionMax(iter.take(0), iter)
   }
 }
