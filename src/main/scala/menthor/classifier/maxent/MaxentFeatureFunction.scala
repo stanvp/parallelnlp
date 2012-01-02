@@ -1,9 +1,16 @@
 package menthor.classifier
 package maxent
 
-class MaxentFeatureFunction[C, S <: Sample](feature: Feature, cls: C) extends FeatureFunction[C, S] {
+import scala.collection.mutable.HashMap
+
+class MaxentFeatureFunction[C, S <: Sample](features: List[Feature], cls: C) extends FeatureFunction[C, S] {
   override def apply(sampleCls: C, sample: S) : Double = {
-    val value = sample.features.getOrElse(feature, 0.0)
+    var value : Double = 0
+    
+    for (feature <- features) {
+    	value += sample.features.getOrElse(feature, 0.0)
+    }
+    
     if (cls != sampleCls || value <= 0) {
       0.0
     } else {
@@ -11,5 +18,5 @@ class MaxentFeatureFunction[C, S <: Sample](feature: Feature, cls: C) extends Fe
     }
   }
   
-  override def toString() = "MaxentFeatureFunction(%s, %s)".format(feature, cls)
+  override def toString() = "MaxentFeatureFunction(%s, %s)".format(features, cls)
 }

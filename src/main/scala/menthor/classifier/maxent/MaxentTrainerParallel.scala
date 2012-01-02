@@ -8,6 +8,7 @@ import menthor.processing.Substep
 import menthor.processing.Vertex
 import scalala.library.Library._
 import scalala.library.LinearAlgebra._
+import scalala.library.Numerics._
 import scalala.library.Statistics._
 import scalala.operators.Implicits._
 import scalala.scalar._
@@ -19,7 +20,7 @@ import menthor.util.ConditionalFrequencyDistribution
 import scala.util.logging.Logged
 
 class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
-  val iterations = 100
+  val iterations = 20
 
   /**
    * Train maximum entropy classifier
@@ -27,20 +28,20 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
-    
+
     log("Started MaxentTrainerParallel")
-    
+
     log("Selecting features")
 
-    val features = selectFeatures(classes, samples)
+    val featureshash = selectFeatures(classes, samples)
 
-    val model = new MaxentModel[C, S](
+    val model = new MaxentModelCached[C, S](new MaxentModel[C, S](
       classes,
-      features,
-      DenseVector.zeros[Double](features.size))
+      featureshash,
+      DenseVector.zeros[Double](featureshash.size * classes.size)))
 
     val classifier = new MaxentClassifier[C, S](model)
-    
+
     log("Building the graph")
 
     val graph = new Graph[ProcessingResult]
@@ -62,20 +63,22 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
     }
 
     log("Processing samples")
-    
+
     graph.start()
     graph.iterate(iterations * 7)
 
     graph.terminate()
-    
+
     log("Finished MaxentTrainerParallel")
 
-    graph.vertices.first.asInstanceOf[SampleVertex[C, S]].classifier
+    val cachedModel = graph.vertices.first.asInstanceOf[SampleVertex[C, S]].classifier.model
+
+    new MaxentClassifier[C, S](new MaxentModel[C, S](cachedModel.classes, cachedModel.featureshash, cachedModel.parameters))
   }
 
   def selectFeatures(
     classes: List[C],
-    samples: Iterable[(C, S)]): List[MaxentFeatureFunction[C, S]] = {
+    samples: Iterable[(C, S)]): Map[Int, List[Feature]] = {
 
     val featureFreqDistr = new FrequencyDistribution[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
@@ -100,10 +103,14 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr)
 
-    for (
-      c <- classes;
-      (f, ig) <- features
-    ) yield new MaxentFeatureFunction[C, S](f, c)
+    val featureshash = new HashMap[Int, List[Feature]].withDefaultValue(List[Feature]())
+
+    for ((f, ig) <- features) {
+      val key = Math.abs(f.hashCode()) % 200
+      featureshash.put(key, f :: featureshash(key))
+    }
+
+    featureshash.toMap
   }
 
   class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
@@ -114,7 +121,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
     val model = classifier.model
 
     var logEmpiricalFeatureFreqDistr: Vector[Double] = _
-    var logEstimatedFeatureFreqDistr: Vector[Double] = _
+    var logEstimatedFeatureFreqDistr: Vector[Double] = DenseVector.zeros[Double](model.parameters.size)
 
     def update(): Substep[ProcessingResult] = {
       {
@@ -122,7 +129,13 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
         List()
       } then {
         if (superstep == 1) {
-          val empiricalFeatureFreqDistr = incoming.map(_.value.empiricalFeatureFreqDistr).reduce { (x, y) => x + y }
+          val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
+
+          incoming.map(_.value.empiricalFeatureFreqDistr).foreach { x =>
+            x.foreachNonZeroPair { (i, v) =>
+              empiricalFeatureFreqDistr(i) += v
+            }
+          }
 
           logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
           value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
@@ -137,11 +150,15 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
       } then {
         // sample step
         List()
-      } then {
-        val estimatedFeatureFreqDistr = incoming.map(_.value.estimatedFeatureFreqDistr).reduce { (x, y) => x + y }
-
-        logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
-
+      } then {        
+        logEstimatedFeatureFreqDistr(0 to logEstimatedFeatureFreqDistr.size - 1) := 0.0
+        
+        incoming.map(_.value.logEstimatedFeatureFreqDistr).foreach { x => 
+          x.foreachPair { (i, v) =>
+            logEstimatedFeatureFreqDistr(i) = logSum(logEstimatedFeatureFreqDistr(i), v)
+          }
+        }
+        
         classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
         value.parameters = classifier.model.parameters
@@ -192,15 +209,17 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
         }
         List()
       } then {
-        val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.features.size)
+        val logEstimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
         val dist = classifier.probClassify(sample)
 
         for ((distcls, prob) <- dist) {
-          estimatedFeatureFreqDistr += (model.encode(distcls, sample) * Math.exp(prob))
+          model.encode(distcls, sample).foreachNonZeroPair { (i, v) =>
+            logEstimatedFeatureFreqDistr(i) = logSum(logEstimatedFeatureFreqDistr(i), Math.log(v) + prob)
+          }          
         }
 
-        value.estimatedFeatureFreqDistr = estimatedFeatureFreqDistr
+        value.logEstimatedFeatureFreqDistr = logEstimatedFeatureFreqDistr
 
         for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
       } then {
@@ -218,7 +237,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
 
   case class ProcessingResult {
     var empiricalFeatureFreqDistr: Vector[Double] = _
-    var estimatedFeatureFreqDistr: Vector[Double] = _
+    var logEstimatedFeatureFreqDistr: Vector[Double] = _
     var logEmpiricalFeatureFreqDistr: Vector[Double] = _
     var parameters: Vector[Double] = _
   }

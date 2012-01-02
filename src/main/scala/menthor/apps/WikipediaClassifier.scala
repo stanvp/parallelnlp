@@ -69,13 +69,13 @@ object WikipediaClassifier {
     val trainer = args.first match {
       case "maxent" =>
         args(1) match {
-          case "parallel" => new MaxentTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "parallel" => new MaxentTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
       case "naivebayes" =>
         args(1) match {
-          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](20, new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
