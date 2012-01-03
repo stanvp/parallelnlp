@@ -12,7 +12,7 @@ import menthor.util.CollectionUtils._
  *
  * @see Yiming Yang and Jan O. Pedersen. 1997. A Comparative Study on Feature Selection in Text Categorization. In Proceedings of the Fourteenth International Conference on Machine Learning (ICML '97), Douglas H. Fisher (Ed.). Morgan Kaufmann Publishers Inc., San Francisco, CA, USA, 412-420.
  */
-class IGFeatureSelector[C](N: Int) extends FeatureSelector[C] {
+class IGFeatureSelector[C](val N: Int) extends FeatureSelector[C] {
   /**
    * Computes the information gain and selects the best features
    */

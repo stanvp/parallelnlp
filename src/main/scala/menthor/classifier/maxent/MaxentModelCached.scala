@@ -6,7 +6,7 @@ import scalala.operators.Implicits._
 import scalala.tensor.sparse.SparseVector
 import scala.collection.mutable.HashMap
 
-class MaxentModelCached[C, S <: Sample](model: MaxentModel[C, S]) extends MaxentModel[C, S](model.classes, model.featureshash, model.parameters) {
+class MaxentModelCached[C, S <: Sample](model: MaxentModel[C, S]) extends MaxentModel[C, S](model.classes, model.features, model.parameters) {
   val cache = new HashMap[(C, S), SparseVector[Double]]
 
   override def encode(cls: C, sample: S): SparseVector[Double] = {

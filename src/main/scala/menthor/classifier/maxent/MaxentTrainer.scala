@@ -30,12 +30,12 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
 
     log("Selecting features")
 
-    val featureshash = selectFeatures(classes, samples)
+    val features = selectFeatures(classes, samples)
 
     val model = new MaxentModelCached[C, S](new MaxentModel[C, S](
       classes,
-      featureshash,
-      DenseVector.ones[Double](featureshash.size * classes.size)))
+      features,
+      DenseVector.ones[Double](features.size * classes.size)))
 
     val classifier = new MaxentClassifier[C, S](model)
 
@@ -66,7 +66,7 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
 
     log("Finished MaxentTrainer")
 
-    new MaxentClassifier[C, S](new MaxentModel[C, S](model.classes, model.featureshash, model.parameters))
+    new MaxentClassifier[C, S](new MaxentModel[C, S](model.classes, model.features, model.parameters))
   }
 
   def calculateFeatureFrequencyDistribution[C, S <: Sample](
@@ -87,7 +87,7 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
 
   def selectFeatures(
     classes: List[C],
-    samples: Iterable[(C, S)]): Map[Int, List[Feature]] = {
+    samples: Iterable[(C, S)]) : List[Feature] = {
 
     val featureFreqDistr = new FrequencyDistribution[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
@@ -112,13 +112,6 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr)
 
-    val featureshash = new HashMap[Int, List[Feature]].withDefaultValue(List[Feature]())
-
-    for ((f, ig) <- features) {
-      val key = Math.abs(f.hashCode()) % 200
-      featureshash.put(key, f :: featureshash(key))
-    }
-
-    featureshash.toMap
+     features.map(_._1).toList
   }
 }

@@ -33,12 +33,12 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
 
     log("Selecting features")
 
-    val featureshash = selectFeatures(classes, samples)
+    val features = selectFeatures(classes, samples)
 
     val model = new MaxentModelCached[C, S](new MaxentModel[C, S](
       classes,
-      featureshash,
-      DenseVector.zeros[Double](featureshash.size * classes.size)))
+      features,
+      DenseVector.zeros[Double](features.size * classes.size)))
 
     val classifier = new MaxentClassifier[C, S](model)
 
@@ -73,12 +73,12 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
 
     val cachedModel = graph.vertices.first.asInstanceOf[SampleVertex[C, S]].classifier.model
 
-    new MaxentClassifier[C, S](new MaxentModel[C, S](cachedModel.classes, cachedModel.featureshash, cachedModel.parameters))
+    new MaxentClassifier[C, S](new MaxentModel[C, S](cachedModel.classes, cachedModel.features, cachedModel.parameters))
   }
 
   def selectFeatures(
     classes: List[C],
-    samples: Iterable[(C, S)]): Map[Int, List[Feature]] = {
+    samples: Iterable[(C, S)]): List[Feature] = {
 
     val featureFreqDistr = new FrequencyDistribution[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
@@ -103,14 +103,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr)
 
-    val featureshash = new HashMap[Int, List[Feature]].withDefaultValue(List[Feature]())
-
-    for ((f, ig) <- features) {
-      val key = Math.abs(f.hashCode()) % 200
-      featureshash.put(key, f :: featureshash(key))
-    }
-
-    featureshash.toMap
+      features.map(_._1).toList
   }
 
   class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])

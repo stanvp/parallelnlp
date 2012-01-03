@@ -6,6 +6,8 @@ import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
 
 trait FeatureSelector[C] {
+  val N : Int
+  
   def select(
     classes: List[C],
     features: List[Feature],

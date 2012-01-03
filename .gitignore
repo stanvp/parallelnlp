@@ -5,3 +5,10 @@ project/boot/
 .classpath
 .project
 .history
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.pdf
+report/*.synctex.gz
+report/*.toc
