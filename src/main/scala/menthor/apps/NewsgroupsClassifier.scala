@@ -33,7 +33,7 @@ object NewsgroupsClassifier {
 
   def main(args: Array[String]) {
     if (args.size < 3) {
-      println("Please specify [algorithm] [traning mode] [news group review corpus path] [evaluation]")
+      println("Please specify [algorithm] [traning mode] [news group corpus path] [evaluation]")
       println("algorithm can be: maxent or naivebayes")
       println("traning mode can be: parallel or sequential")
       println("evaluation be: true or false, default is false")
@@ -43,6 +43,8 @@ object NewsgroupsClassifier {
     val evaluation = if (args.length < 4) false else args(3).toBoolean
 
     val train = load(args(2) + "/20news-bydate-train")    
+    
+    println(train.size)
 
     val categories = List(
       "alt.atheism",

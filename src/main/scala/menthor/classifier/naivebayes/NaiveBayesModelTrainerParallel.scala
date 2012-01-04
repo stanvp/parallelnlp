@@ -145,5 +145,4 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector
       }
     }
   }
-
 }

@@ -7,6 +7,7 @@ import scalala.operators.Implicits._
 import collection.Map
 import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
+import scala.collection.immutable.HashSet
 
 /**
  * 
@@ -20,5 +21,6 @@ case class NaiveBayesModel[C, S <: Sample](
   featureFreqDistr: FrequencyDistribution[Feature], // cf_w and C
   classSamplesFreqDistr: FrequencyDistribution[C] // N_c and N
   ) {
-  def encode(sample: S): Map[Feature, Double] = sample.features.filterKeys(f => features.contains(f))
+  val featureset = HashSet(features :_*)
+  def encode(sample: S): Map[Feature, Double] = sample.features.filterKeys(f => featureset.contains(f))
 }
