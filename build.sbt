@@ -32,6 +32,6 @@ libraryDependencies ++= Seq(
   "epfl" %% "libmenthor" % "0.1",
   "org.scalala" %% "scalala" % "1.0.0.RC2-SNAPSHOT",
   "org.apache.opennlp" % "opennlp-tools" % "1.5.2-incubating",
-  "net.sf.trove4j" % "trove4j" % "3.0.2"
+  "net.sf.trove4j" % "trove4j" % "3.0.2",
   "org.scalatest" %% "scalatest" % "1.6.1" % "test"
 )
