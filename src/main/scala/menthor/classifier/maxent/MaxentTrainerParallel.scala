@@ -78,7 +78,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     val model = classifier.model
 
     var logEmpiricalFeatureFreqDistr: Vector[Double] = _
-    var estimatedFeatureFreqDistr: Vector[Double] = DenseVector.zeros[Double](model.parameters.size)
 
     def update(): Substep[ProcessingResult] = {
       {
@@ -107,8 +106,8 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
       } then {
         // sample step
         List()
-      } then {        
-        estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
+      } then {     
+        val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
         
         incoming.map(_.value.estimatedFeatureFreqDistr).foreach { x => 
           x.foreachPair { (i, v) =>

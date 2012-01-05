@@ -60,7 +60,7 @@ object WikipediaClassifier {
 
     val features = loadFeatures(args(3))
 
-    val evaluation = if (args.length < 4) false else args(3).toBoolean
+    val evaluation = if (args.length < 4) false else args(4).toBoolean
 
     val train = load(args(2) + "/train", false)
 
