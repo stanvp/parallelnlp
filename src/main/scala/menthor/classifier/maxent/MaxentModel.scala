@@ -15,8 +15,8 @@ class MaxentModel[C, S <: Sample](
   val featuresSize = features.size
   val classOffset = HashMap(classes.zipWithIndex.map(x => (x._1, x._2 * featuresSize)) :_*)
 
-  def encode(sample: S): Vector[Double] = {
-    val encoding = DenseVector.zeros[Double](features.size)
+  def encode(sample: S): SparseVector[Double] = {
+    val encoding = SparseVector.zeros[Double](features.size)
 
     for ((feature, i) <- features.zipWithIndex) {
       encoding(i) = sample.features.get(feature) / sample.total

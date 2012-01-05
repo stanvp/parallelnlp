@@ -19,7 +19,7 @@ import scalala.tensor.mutable._
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
-class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
+class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feature]) extends Trainer[C, S] with Logged {
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): NaiveBayesClassifier[C, S] = {
@@ -57,18 +57,9 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector
     val value = new ProcessingResult[C]
     ProcessingResult.merge(value, masters.map(_.value))
 
-    log("Selecting features")
-
-    val features = featureSelector.select(
-      classes,
-      value.featureFreqDistr.samples,
-      value.classSamplesFreqDistr,
-      value.classFeatureBinaryFreqDistr,
-      value.featureBinaryFreqDistr)
-
     val model = new NaiveBayesModel[C, S](
       classes,
-      features.map(_._1).toList,
+      features,
       value.classFeatureFreqDistr,
       value.featureFreqDistr,
       value.classSamplesFreqDistr)

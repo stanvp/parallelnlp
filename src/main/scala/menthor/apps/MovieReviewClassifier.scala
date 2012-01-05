@@ -16,7 +16,10 @@ import scala.util.logging.ConsoleLogger
 import menthor.classifier.featureselector.IGFeatureSelector
 
 object MovieReviewClassifier {
-  def load(folder: String): List[Document] = {
+  
+  val categories = List("neg", "pos")
+  
+  def load(folder: String, extendIndex: Boolean): Iterable[Document] = {
     val collection = new ListBuffer[Document]
 
     forEachFileIn(new File(folder)) {
@@ -24,31 +27,32 @@ object MovieReviewClassifier {
         val document = new Document(
           file.getName(),
           List(file.getParentFile().getName()),
-          Analyzer.termFrequency(Source.fromFile(file).getLines().mkString("\n")))
+          Analyzer.termFrequency(Source.fromFile(file).getLines().mkString("\n"), extendIndex))
         
         collection += document
     }
 
-    collection.toList
+    collection.toIterable
   }
 
   def main(args: Array[String]) {
-    if (args.size < 3) {
-      println("Please specify [algorithm] [traning mode] [movie review corpus path]")
+    if (args.size < 4) {
+      println("Please specify [algorithm] [traning mode] [movie review corpus path] [features file]")
       println("algorithm can be: maxent or naivebayes")
       println("traning mode can be: parallel or sequential")
       exit
     }
     
-	val collection = Random.shuffle(load(args(2)))
+    val features = loadFeatures(args(3))
+    
+	val collection = Random.shuffle(load(args(2), false))
 	
 	// split the collection into training and test sets  
 	val testSize = (collection.size * 0.1).toInt
 	val test = collection.slice(0, testSize - 1)
 	
 	val train = collection.slice(testSize, collection.size - 1)
-	
-	val categories = List("neg", "pos")
+		
 	val samples = train.view.flatMap(d => 
 	  d.categories.map(c => (c, d)) 
 	)
@@ -56,14 +60,14 @@ object MovieReviewClassifier {
 	val trainer = args.first match {
 	  case "maxent" =>
 	  	 args(1) match {
-	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](100)) with ConsoleLogger
-	  	   case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](100)) with ConsoleLogger
+	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, features) with ConsoleLogger
+	  	   case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }	    
 	  case "naivebayes" =>
 	  	 args(1) match {
-	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](100)) with ConsoleLogger
-	  	   case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](100)) with ConsoleLogger
+	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](5, features) with ConsoleLogger
+	  	   case "sequential" => new NaiveBayesTrainer[Category, Document](features) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }
 	  case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")

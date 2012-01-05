@@ -21,7 +21,7 @@ import menthor.util.ConditionalFrequencyDistribution
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
-class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C], iterations : Int = 100) extends Trainer[C, S] with Logged {
+class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feature], iterations : Int = 100) extends Trainer[C, S] with Logged {
   /**
    * Train maximum entropy classifier
    */
@@ -30,10 +30,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
     samples: Iterable[(C, S)]): Classifier[C, S] = {
 
     log("Started MaxentTrainerParallel")
-
-    log("Selecting features")
-
-    val features = selectFeatures(classes, samples)
 
     val model = new MaxentModel[C, S](
       classes,
@@ -71,42 +67,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
 
     log("Finished MaxentTrainerParallel")
 
-    val cachedModel = graph.vertices.first.asInstanceOf[SampleVertex[C, S]].classifier.model
-
-    new MaxentClassifier[C, S](new MaxentModel[C, S](cachedModel.classes, cachedModel.features, cachedModel.parameters))
-  }
-
-  def selectFeatures(
-    classes: List[C],
-    samples: Iterable[(C, S)]): List[Feature] = {
-
-    val featureFreqDistr = new FrequencyDistribution[Feature]
-    val classSamplesFreqDistr = new FrequencyDistribution[C]
-
-    val classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
-    val featureBinaryFreqDistr = new FrequencyDistribution[Feature]
-
-    for ((cls, sample) <- samples) {
-      sample.features.forEachEntry(new TIntDoubleProcedure {
-        override def execute(feature: Int, value: Double): Boolean = {
-          featureFreqDistr.increment(feature, value)
-          classFeatureBinaryFreqDistr(cls).increment(feature)
-          featureBinaryFreqDistr.increment(feature)
-          true
-        }
-      })
-
-      classSamplesFreqDistr.increment(cls)
-    }
-
-    val features = featureSelector.select(
-      classes,
-      featureFreqDistr.samples,
-      classSamplesFreqDistr,
-      classFeatureBinaryFreqDistr,
-      featureBinaryFreqDistr)
-
-      features.map(_._1).toList
+    classifier
   }
 
   class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
@@ -184,6 +145,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
     val model = classifier.model
+    lazy val encoding = { model.encode(sample) }
 
     var logEmpiricalFeatureFreqDistr: Vector[Double] = _
     var estimatedFeatureFreqDistr: Vector[Double] = DenseVector.zeros[Double](model.parameters.size)
@@ -194,7 +156,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
           value.empiricalFeatureFreqDistr = SparseVector.zeros[Double](model.parameters.size)
           val classOffset = model.classOffset(cls)
           
-          model.encode(sample).foreachNonZeroPair { (i, v) =>
+          encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
           	value.empiricalFeatureFreqDistr(index) = v
           }
@@ -216,7 +178,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: Fe
         estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
         val dist = classifier.probClassify(sample)
-        val encoding = model.encode(sample)
         
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)

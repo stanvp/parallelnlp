@@ -19,7 +19,7 @@ import gnu.trove.procedure.TIntDoubleProcedure
 import menthor.util.ProbabilityDistribution
 import scala.collection.mutable.ListBuffer
 
-class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C], iterations: Int = 100) extends Trainer[C, S] with Logged {
+class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 100) extends Trainer[C, S] with Logged {
   /**
    * Train maximum entropy classifier
    */
@@ -28,10 +28,6 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C], iterati
     samples: Iterable[(C, S)]): Classifier[C, S] = {
 
     log("Started MaxentTrainer")
-
-    log("Selecting features")
-
-    val features = selectFeatures(classes, samples)
 
     val model = new MaxentModel[C, S](
       classes,
@@ -42,23 +38,23 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C], iterati
     
     log("Processing samples")
     
-    val encodings = Array.ofDim[(C, Vector[Double])](samples.size)
+    val encodings = Array.ofDim[(C, SparseVector[Double])](samples.size)
     val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
     
-    var i = 0
+    var j = 0
     
     for ((cls, sample) <- samples) {
       val classOffset = model.classOffset(cls)
       val encoding = model.encode(sample)
       
-      encodings(i) = ((cls,encoding))
+      encodings(j) = ((cls,encoding))
       
       encoding.foreachNonZeroPair { (i, v) =>
         val index = classOffset + i
         empiricalFeatureFreqDistr(index) += v
       }
       
-      i += 1
+      j += 1
     }
     
     val logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
@@ -75,9 +71,10 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C], iterati
         
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)
+          
           encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
-            estimatedFeatureFreqDistr(index) += v + Math.exp(prob)
+            estimatedFeatureFreqDistr(index) += v * Math.exp(prob)
           }
         }
       }
@@ -90,38 +87,5 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C], iterati
     log("Finished MaxentTrainer")
 
     classifier
-  }
-
-  def selectFeatures(
-    classes: List[C],
-    samples: Iterable[(C, S)]): List[Feature] = {
-
-    val featureFreqDistr = new FrequencyDistribution[Feature]
-    val classSamplesFreqDistr = new FrequencyDistribution[C]
-
-    val classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
-    val featureBinaryFreqDistr = new FrequencyDistribution[Feature]
-
-    for ((cls, sample) <- samples) {
-      sample.features.forEachEntry(new TIntDoubleProcedure {
-        override def execute(feature: Int, value: Double): Boolean = {
-          featureFreqDistr.increment(feature, value)
-          classFeatureBinaryFreqDistr(cls).increment(feature)
-          featureBinaryFreqDistr.increment(feature)
-          true
-        }
-      })
-
-      classSamplesFreqDistr.increment(cls)
-    }
-
-    val features = featureSelector.select(
-      classes,
-      featureFreqDistr.samples,
-      classSamplesFreqDistr,
-      classFeatureBinaryFreqDistr,
-      featureBinaryFreqDistr)
-
-    features.map(_._1).toList
   }
 }

@@ -8,7 +8,7 @@ import menthor.util.FrequencyDistribution
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
-class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
+class NaiveBayesTrainer[C, S <: Sample](features: List[Feature]) extends Trainer[C, S] with Logged {
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
@@ -40,18 +40,9 @@ class NaiveBayesTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) ext
       classSamplesFreqDistr.increment(cls)
     }
 
-    log("Selecting features")
-
-    val features = featureSelector.select(
-      classes,
-      featureFreqDistr.samples,
-      classSamplesFreqDistr,
-      classFeatureBinaryFreqDistr,
-      featureBinaryFreqDistr)
-
     val model = new NaiveBayesModel[C, S](
       classes,
-      features.map(_._1).toList,
+      features,
       classFeatureFreqDistr,
       featureFreqDistr,
       classSamplesFreqDistr)
