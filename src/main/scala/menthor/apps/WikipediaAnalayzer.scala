@@ -14,6 +14,15 @@ import menthor.classifier.maxent.MaxentTrainerParallel
 import scala.collection.mutable.ListBuffer
 import scala.util.logging.ConsoleLogger
 import scala.util.matching.Regex
+import scalala.tensor.sparse.SparseVector
+import scalala.library.Library._
+import scalala.library.LinearAlgebra._
+import scalala.library.Statistics._
+import scalala.operators.Implicits._
+import scalala.scalar._
+import scalala.tensor.dense._
+import scalala.tensor.mutable._
+import scalala.library.Numerics._
 
 object WikipediaAnalayzer {
   def main(args: Array[String]) {
@@ -24,7 +33,7 @@ object WikipediaAnalayzer {
 //
 //    val folder = args.first
 //
-////    val collection = new ListBuffer[Document]
+//    val collection = new ListBuffer[Document]
 //    
 //    val allCategories = new HashMap[Category, Int]
 //
@@ -52,13 +61,11 @@ object WikipediaAnalayzer {
     
     val regex = new Regex("""([A-Z])""")
     
-    
     (xml \\ "a").foreach { a =>
       a.attribute("name") match {
         case Some(name) => println(regex.replaceAllIn(name.text, m => " " + m.group(1)).trim.toLowerCase)
         case None => 
       }
     }
-    
   }
 }

@@ -1,8 +1,9 @@
 package menthor.apps
 
 import menthor.classifier.Sample
+import gnu.trove.map.hash.TIntDoubleHashMap
 
-case class Document(name: String, categories: List[String], termFrequency: Map[String, Double]) extends Sample {
+case class Document(name: String, categories: List[String], termFrequency: TIntDoubleHashMap) extends Sample {
   override def toString()  = "Document(%s,%s)".format(name, categories)
   
   override def hashCode = name.hashCode()
@@ -12,5 +13,5 @@ case class Document(name: String, categories: List[String], termFrequency: Map[S
   }
   
   val total: Double = termFrequency.values.sum
-  val features : Map[String, Double] = termFrequency
+  val features : TIntDoubleHashMap = termFrequency
 }

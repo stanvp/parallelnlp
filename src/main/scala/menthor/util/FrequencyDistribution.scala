@@ -2,35 +2,36 @@ package menthor.util
 
 import scalala.library.Numerics._
 import scala.collection.mutable.HashMap
+import gnu.trove.map.hash.TObjectDoubleHashMap
 
 class FrequencyDistribution[T] {
-  private[this] val distribution = new HashMap[T,Double].withDefaultValue(0)
+  private[this] val distribution = new TObjectDoubleHashMap[T]()
   private var _total = 0.0
   
   def increment(sample: T, value: Double = 1.0) {
-	  distribution.put(sample, distribution(sample) + value)
+	  distribution.put(sample, distribution.get(sample) + value)
 	  _total += value
   }
   
   def total = _total
   
-  def samples = distribution.keys.toList
+  def samples = distribution.keys.map(_.asInstanceOf[T]).toList
   
-  def count(sample: T) : Double = distribution.getOrElse(sample, 0.0)
+  def count(sample: T) : Double = distribution.get(sample)
   
-  def frequency(sample: T) = if (total == 0) 0 else distribution.getOrElse(sample, 0.0) / total
+  def frequency(sample: T) = if (total == 0) 0 else distribution.get(sample) / total 
   
-  def toMap : Map[T, Double] = distribution.toMap
+  def toMap : TObjectDoubleHashMap[T] = distribution
 }
 
 object FrequencyDistribution {
-  implicit def convertToMap[T](frequencyDistribution: FrequencyDistribution[T]): Map[T,Double] = frequencyDistribution.toMap
+  implicit def convertToMap[T](frequencyDistribution: FrequencyDistribution[T]): TObjectDoubleHashMap[T] = frequencyDistribution.toMap
 }
 
 class ConditionalFrequencyDistribution[U,T] {
   private[this] val distributions = new HashMap[U,FrequencyDistribution[T]]
   
-  def toMap : Map[U, Map[T, Double]] = distributions.mapValues(_.toMap).toMap
+  def toMap : Map[U, TObjectDoubleHashMap[T]] = distributions.mapValues(_.toMap).toMap
   
   def samples = distributions.keys.toList
   
@@ -47,5 +48,5 @@ class ConditionalFrequencyDistribution[U,T] {
 }
 
 object ConditionalFrequencyDistribution {
-  implicit def convertToMap[U,T](conditionalFrequencyDistribution: ConditionalFrequencyDistribution[U,T]): Map[U,Map[T, Double]] = conditionalFrequencyDistribution.toMap
+  implicit def convertToMap[U,T](conditionalFrequencyDistribution: ConditionalFrequencyDistribution[U,T]): Map[U,TObjectDoubleHashMap[T]] = conditionalFrequencyDistribution.toMap
 }

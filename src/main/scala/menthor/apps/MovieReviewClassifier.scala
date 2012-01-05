@@ -56,14 +56,14 @@ object MovieReviewClassifier {
 	val trainer = args.first match {
 	  case "maxent" =>
 	  	 args(1) match {
-	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](200)) with ConsoleLogger
-	  	   case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](200)) with ConsoleLogger
+	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, new IGFeatureSelector[Category](100)) with ConsoleLogger
+	  	   case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](100)) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }	    
 	  case "naivebayes" =>
 	  	 args(1) match {
-	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](200)) with ConsoleLogger
-	  	   case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](200)) with ConsoleLogger
+	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](100)) with ConsoleLogger
+	  	   case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](100)) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }
 	  case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")

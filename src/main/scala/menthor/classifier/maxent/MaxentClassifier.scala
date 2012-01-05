@@ -15,6 +15,7 @@ import scalala.tensor.dense._
 import scalala.tensor.mutable._
 import scala.Math
 import menthor.util.ProbabilityDistribution
+import scalala.tensor.sparse.SparseVector
 
 /**
  * Maximum entropy classifier
@@ -25,23 +26,27 @@ import menthor.util.ProbabilityDistribution
  * Christopher Manning and Dan Klein. 2003. Optimization, Maxent Models, and Conditional Estimation without Magic. Tutorial at HLT-NAACL 2003 and ACL 2003.
  *
  */
-case class MaxentClassifier[C, S <: Sample](val model: MaxentModel[C, S]) extends Classifier[C,S] {
+case class MaxentClassifier[C, S <: Sample](val model: MaxentModel[C, S]) extends Classifier[C, S] {
+  
   override def probClassify(sample: S): ProbabilityDistribution[C] = {
+    probClassify(model.encode(sample))
+  }  
+  
+  
+  def probClassify(encoding: Vector[Double]): ProbabilityDistribution[C] = {
     val prob = new HashMap[C, Double]
-    
-    for (cls <- model.classes) {      
-      val features = model.encode(cls, sample)
 
+    for ((cls, index) <- model.classes.zipWithIndex) {
       var total = 0.0
 
-      features.foreachPair { (id, value) =>
-        val parameter = model.parameters(id)
+      encoding.foreachNonZeroPair { (index, value) =>
+        val parameter = model.parameter(cls, index) 
         total += parameter * value
       }
 
       prob.put(cls, total)
     }
 
-    new ProbabilityDistribution(prob.toMap, true)
+    new ProbabilityDistribution(prob.toMap, false)
   }
 }

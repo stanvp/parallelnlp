@@ -13,5 +13,5 @@ trait FeatureSelector[C] {
     features: List[Feature],
     classSamplesFreqDistr: FrequencyDistribution[C],
     classFeatureBinaryFreqDistr: ConditionalFrequencyDistribution[C, Feature],
-    featureBinaryFreqDistr: FrequencyDistribution[Feature]): Iterable[(String, Double)]
+    featureBinaryFreqDistr: FrequencyDistribution[Feature]): Iterable[(Feature, Double)]
 }

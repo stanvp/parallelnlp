@@ -17,6 +17,7 @@ import scalala.scalar._
 import scalala.tensor.dense._
 import scalala.tensor.mutable._
 import scala.util.logging.Logged
+import gnu.trove.procedure.TIntDoubleProcedure
 
 class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
   override def train(
@@ -43,7 +44,7 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector
         masters(i).connectTo(vertex)
       }
     }
-    
+
     log("Processing samples")
 
     graph.start()
@@ -57,7 +58,7 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector
     ProcessingResult.merge(value, masters.map(_.value))
 
     log("Selecting features")
-    
+
     val features = featureSelector.select(
       classes,
       value.featureFreqDistr.samples,
@@ -98,13 +99,16 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, featureSelector
 
     def update(): Substep[ProcessingResult[C]] = {
       {
-        for ((feature, v) <- sample.features) {
-          value.classFeatureFreqDistr(cls).increment(feature, v)
-          value.featureFreqDistr.increment(feature, v)
+        sample.features.forEachEntry(new TIntDoubleProcedure {
+          override def execute(feature: Int, v: Double): Boolean = {
+            value.classFeatureFreqDistr(cls).increment(feature, v)
+            value.featureFreqDistr.increment(feature, v)
 
-          value.classFeatureBinaryFreqDistr(cls).increment(feature)
-          value.featureBinaryFreqDistr.increment(feature)
-        }
+            value.classFeatureBinaryFreqDistr(cls).increment(feature)
+            value.featureBinaryFreqDistr.increment(feature)
+            true
+          }
+        })
 
         value.classSamplesFreqDistr.increment(cls)
 

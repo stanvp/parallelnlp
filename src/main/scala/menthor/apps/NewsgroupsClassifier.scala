@@ -20,11 +20,15 @@ object NewsgroupsClassifier {
 
     forEachFileIn(new File(folder)) {
       file =>
+        val source = Source.fromFile(file, "Cp1252")
+        
         val document = new Document(
           file.getName(),
           List(file.getParentFile().getName()),
-          Analyzer.termFrequency(Source.fromFile(file, "Cp1252").getLines().mkString("\n")))
-
+          Analyzer.termFrequency(source.getLines().mkString("\n")))
+        
+        source.close()
+        
         collection += document
     }
 
@@ -44,8 +48,6 @@ object NewsgroupsClassifier {
 
     val train = load(args(2) + "/20news-bydate-train")    
     
-    println(train.size)
-
     val categories = List(
       "alt.atheism",
       "comp.graphics",
@@ -74,14 +76,14 @@ object NewsgroupsClassifier {
     val trainer = args.first match {
       case "maxent" =>
         args(1) match {
-          case "parallel" => new MaxentTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](6000)) with ConsoleLogger
-          case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "parallel" => new MaxentTrainerParallel[Category, Document](5, new IGFeatureSelector[Category](5000)) with ConsoleLogger
+          case "sequential" => new MaxentTrainer[Category, Document](new IGFeatureSelector[Category](5000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
       case "naivebayes" =>
         args(1) match {
-          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](10, new IGFeatureSelector[Category](6000)) with ConsoleLogger
-          case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](6000)) with ConsoleLogger
+          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](10, new IGFeatureSelector[Category](5000)) with ConsoleLogger
+          case "sequential" => new NaiveBayesTrainer[Category, Document](new IGFeatureSelector[Category](5000)) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
       case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")

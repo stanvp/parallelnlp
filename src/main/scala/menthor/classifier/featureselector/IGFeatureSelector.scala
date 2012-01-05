@@ -21,7 +21,7 @@ class IGFeatureSelector[C](val N: Int) extends FeatureSelector[C] {
     features: List[Feature],
     classSamplesFreqDistr: FrequencyDistribution[C],
     classFeatureBinaryFreqDistr: ConditionalFrequencyDistribution[C, Feature],
-    featureBinaryFreqDistr: FrequencyDistribution[Feature]): Iterable[(String, Double)] = {
+    featureBinaryFreqDistr: FrequencyDistribution[Feature]): Iterable[(Feature, Double)] = {
     
     val classEntropy = -classSamplesFreqDistr.values.map { f =>
       val p = (f / classSamplesFreqDistr.total)
@@ -48,6 +48,6 @@ class IGFeatureSelector[C](val N: Int) extends FeatureSelector[C] {
       (feature, ig)
     }
     
-    topNs(N, featuresGains)(Ordering[Double].on(_._2)).toList
+    topNs(N, featuresGains.seq)(Ordering[Double].on(_._2))
   }
 }

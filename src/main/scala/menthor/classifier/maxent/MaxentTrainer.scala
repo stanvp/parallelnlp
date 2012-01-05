@@ -15,10 +15,11 @@ import menthor.util.ConditionalFrequencyDistribution
 import menthor.util.FrequencyDistribution
 import scala.util.logging.Logged
 import scalala.tensor.sparse.SparseVector
+import gnu.trove.procedure.TIntDoubleProcedure
+import menthor.util.ProbabilityDistribution
+import scala.collection.mutable.ListBuffer
 
-class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends Trainer[C, S] with Logged {
-  val iterations = 20
-
+class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C], iterations: Int = 100) extends Trainer[C, S] with Logged {
   /**
    * Train maximum entropy classifier
    */
@@ -32,62 +33,68 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
 
     val features = selectFeatures(classes, samples)
 
-    val model = new MaxentModelCached[C, S](new MaxentModel[C, S](
+    val model = new MaxentModel[C, S](
       classes,
       features,
-      DenseVector.ones[Double](features.size * classes.size)))
+      DenseVector.ones[Double](features.size * classes.size))
 
     val classifier = new MaxentClassifier[C, S](model)
-
+    
     log("Processing samples")
+    
+    val encodings = Array.ofDim[(C, Vector[Double])](samples.size)
+    val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
+    
+    var i = 0
+    
+    for ((cls, sample) <- samples) {
+      val classOffset = model.classOffset(cls)
+      val encoding = model.encode(sample)
+      
+      encodings(i) = ((cls,encoding))
+      
+      encoding.foreachNonZeroPair { (i, v) =>
+        val index = classOffset + i
+        empiricalFeatureFreqDistr(index) += v
+      }
+      
+      i += 1
+    }
+    
+    val logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
 
-    val logEmpiricalFeatureFreqDistr = calculateFeatureFrequencyDistribution(classes, samples, model).map(x => if (x == 0.0) 0.0 else Math.log(x))
-
-    val logEstimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
+    val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
     for (n <- 1 to iterations) {
       log("Iteration: " + n)
 
-      logEstimatedFeatureFreqDistr(0 to logEstimatedFeatureFreqDistr.size - 1) := 0.0
+      estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
-      for ((_, sample) <- samples) {
-        val dist = classifier.probClassify(sample)
+      for ((_, encoding) <- encodings) {        
+        val dist = classifier.probClassify(encoding)
+        
         for ((distcls, prob) <- dist) {
-          model.encode(distcls, sample).foreachNonZeroPair { (i, v) =>
-            logEstimatedFeatureFreqDistr(i) = logSum(logEstimatedFeatureFreqDistr(i), Math.log(v) + prob)
+          val classOffset = model.classOffset(distcls)
+          encoding.foreachNonZeroPair { (i, v) =>
+            val index = classOffset + i
+            estimatedFeatureFreqDistr(index) += v + Math.exp(prob)
           }
         }
       }
-
+      
+      val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
+      
       classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
-
-      //println("Parameters: " + classifier.model.parameters)
     }
 
     log("Finished MaxentTrainer")
 
-    new MaxentClassifier[C, S](new MaxentModel[C, S](model.classes, model.features, model.parameters))
-  }
-
-  def calculateFeatureFrequencyDistribution[C, S <: Sample](
-    classes: List[C],
-    samples: Iterable[(C, S)],
-    model: MaxentModel[C, S]): Vector[Double] = {
-
-    val featureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
-
-    for ((cls, sample) <- samples) {
-      model.encode(cls, sample).foreachNonZeroPair { (i, v) =>
-        featureFreqDistr(i) += v
-      }
-    }
-
-    featureFreqDistr
+    classifier
   }
 
   def selectFeatures(
     classes: List[C],
-    samples: Iterable[(C, S)]) : List[Feature] = {
+    samples: Iterable[(C, S)]): List[Feature] = {
 
     val featureFreqDistr = new FrequencyDistribution[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
@@ -96,11 +103,14 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
     val featureBinaryFreqDistr = new FrequencyDistribution[Feature]
 
     for ((cls, sample) <- samples) {
-      for ((feature, value) <- sample.features) {
-        featureFreqDistr.increment(feature, value)
-        classFeatureBinaryFreqDistr(cls).increment(feature)
-        featureBinaryFreqDistr.increment(feature)
-      }
+      sample.features.forEachEntry(new TIntDoubleProcedure {
+        override def execute(feature: Int, value: Double): Boolean = {
+          featureFreqDistr.increment(feature, value)
+          classFeatureBinaryFreqDistr(cls).increment(feature)
+          featureBinaryFreqDistr.increment(feature)
+          true
+        }
+      })
 
       classSamplesFreqDistr.increment(cls)
     }
@@ -112,6 +122,6 @@ class MaxentTrainer[C, S <: Sample](featureSelector: FeatureSelector[C]) extends
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr)
 
-     features.map(_._1).toList
+    features.map(_._1).toList
   }
 }

@@ -4,20 +4,28 @@ package maxent
 import scalala.tensor.mutable.Vector
 import scalala.operators.Implicits._
 import scalala.tensor.sparse.SparseVector
+import scala.collection.immutable.HashMap
+import scalala.tensor.dense.DenseVector
 
 class MaxentModel[C, S <: Sample](
   val classes: List[C],
   val features: List[Feature],
   val parameters: Vector[Double]) {
+    
+  val featuresSize = features.size
+  val classOffset = HashMap(classes.zipWithIndex.map(x => (x._1, x._2 * featuresSize)) :_*)
 
-  def encode(cls: C, sample: S): SparseVector[Double] = {
-    val encoding = SparseVector.zeros[Double](parameters.size)
-    val clsIndex = classes.indexOf(cls) + 1
+  def encode(sample: S): Vector[Double] = {
+    val encoding = DenseVector.zeros[Double](features.size)
 
     for ((feature, i) <- features.zipWithIndex) {
-      encoding(i * clsIndex) = sample.features.getOrElse(feature, 0.0) / sample.total
+      encoding(i) = sample.features.get(feature) / sample.total
     }
 
     encoding
+  }
+  
+  def parameter(cls: C, i: Int) : Double = {
+    parameters(classOffset(cls) + i)
   }
 }

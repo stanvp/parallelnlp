@@ -20,7 +20,7 @@ object ProbabilityDistribution {
    * Normalize logarithmic probability distribution such that it sums to 1
    */
   def normalizeLogProbabilty[T](dist: Map[T, Double]): Map[T, Double] = {
-    val sum = logSum(dist.values.toList)
+    val sum = logSum(dist.values.toSeq)
 
     if (sum <= Double.NegativeInfinity) {
       val logp = Math.log(1.0 / dist.size)
