@@ -77,7 +77,7 @@ class IGFeatureSelector[C, S <: Sample](val N: Int) extends FeatureSelector[C] {
 
     select(
       classes,
-      featureFreqDistr.samples,
+      featureFreqDistr.samples.toList,
       classSamplesFreqDistr,
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr)

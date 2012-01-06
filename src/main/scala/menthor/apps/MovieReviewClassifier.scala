@@ -66,7 +66,7 @@ object MovieReviewClassifier {
 	  	 }	    
 	  case "naivebayes" =>
 	  	 args(1) match {
-	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](5, features) with ConsoleLogger
+	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](8, features) with ConsoleLogger
 	  	   case "sequential" => new NaiveBayesTrainer[Category, Document](features) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }

@@ -19,8 +19,6 @@ class NaiveBayesTrainer[C, S <: Sample](features: List[Feature]) extends Trainer
     val featureFreqDistr = new FrequencyDistribution[Feature]
 
     val classSamplesFreqDistr = new FrequencyDistribution[C]
-    val classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
-    val featureBinaryFreqDistr = new FrequencyDistribution[Feature]
 
     log("Processing samples")
 
@@ -31,8 +29,6 @@ class NaiveBayesTrainer[C, S <: Sample](features: List[Feature]) extends Trainer
           classFeatureFreqDistr(cls).increment(feature, value)
           featureFreqDistr.increment(feature, value)
 
-          classFeatureBinaryFreqDistr(cls).increment(feature)
-          featureBinaryFreqDistr.increment(feature)
           true
         }
       })

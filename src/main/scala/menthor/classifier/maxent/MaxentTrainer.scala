@@ -38,7 +38,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
     
     log("Processing samples")
     
-    val encodings = Array.ofDim[SparseVector[Double]](samples.size)
+    val encodings = Array.ofDim[(C,SparseVector[Double])](samples.size)
     val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
     
     var j = 0
@@ -47,7 +47,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
       val classOffset = model.classOffset(cls)
       val encoding = model.encode(sample)
       
-      encodings(j) = encoding
+      encodings(j) = (cls,encoding)
       
       encoding.foreachNonZeroPair { (i, v) =>
         val index = classOffset + i
@@ -59,18 +59,28 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
     
     val logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
 
+    val samplesSize = samples.size
     val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
-
-    for (n <- 1 to iterations) {
-      log("Iteration: " + n)
-
+    var likelihoodsum = 0.0
+    var loglikelihood = 0.0
+    var lastLoglikelihood = Double.MaxValue
+    var n = 1
+    var cutoff = false     
+    
+    while(!cutoff && n <= iterations) {
       estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
-      for (encoding <- encodings) {        
+      likelihoodsum = 0.0
+      
+      for ((cls,encoding) <- encodings) {        
         val dist = classifier.probClassify(encoding)
         
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)
+          
+          if (distcls == cls) {
+            likelihoodsum += Math.exp(prob)
+          }
           
           encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
@@ -79,9 +89,20 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
         }
       }
       
-      val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
+      loglikelihood = Math.log(likelihoodsum / samplesSize)    
       
-      classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
+      if (loglikelihood.isNaN() || loglikelihood > lastLoglikelihood) {
+    	  log("Cutoff at iteration " + (n - 1))
+    	  cutoff = true    	  
+      } else {
+	      val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
+	      classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
+	      
+	      log("Iteration: " + n + " - loglikelihood: " + loglikelihood)
+      }
+      
+      lastLoglikelihood = loglikelihood
+      n += 1
     }
 
     log("Finished MaxentTrainer")

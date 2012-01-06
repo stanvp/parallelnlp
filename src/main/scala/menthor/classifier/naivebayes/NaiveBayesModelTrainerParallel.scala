@@ -95,8 +95,6 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
             value.classFeatureFreqDistr(cls).increment(feature, v)
             value.featureFreqDistr.increment(feature, v)
 
-            value.classFeatureBinaryFreqDistr(cls).increment(feature)
-            value.featureBinaryFreqDistr.increment(feature)
             true
           }
         })
@@ -114,30 +112,14 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
   class ProcessingResult[C] {
     var classFeatureFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
     var featureFreqDistr = new FrequencyDistribution[Feature]
-
     var classSamplesFreqDistr = new FrequencyDistribution[C]
-    var classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
-    var featureBinaryFreqDistr = new FrequencyDistribution[Feature]
   }
 
   object ProcessingResult {
     def merge[C](v: ProcessingResult[C], results: List[ProcessingResult[C]]) {
-      for (r <- results) {
-        for (cls <- r.classSamplesFreqDistr.samples) {
-          for (feature <- r.featureFreqDistr.samples) {
-            v.classFeatureFreqDistr(cls).increment(feature, r.classFeatureFreqDistr(cls).count(feature))
-
-            v.classFeatureBinaryFreqDistr(cls).increment(feature, r.classFeatureBinaryFreqDistr(cls).count(feature))
-          }
-
-          v.classSamplesFreqDistr.increment(cls, r.classSamplesFreqDistr.count(cls))
-        }
-
-        for (feature <- r.featureFreqDistr.samples) {
-          v.featureBinaryFreqDistr.increment(feature, r.featureBinaryFreqDistr.count(feature))
-          v.featureFreqDistr.increment(feature, r.featureFreqDistr.count(feature))
-        }
-      }
+      v.classFeatureFreqDistr = ConditionalFrequencyDistribution.merge(results.map(_.classFeatureFreqDistr))
+      v.featureFreqDistr = FrequencyDistribution.merge(results.map(_.featureFreqDistr))
+      v.classSamplesFreqDistr = FrequencyDistribution.merge(results.map(_.classSamplesFreqDistr))
     }
   }
 }

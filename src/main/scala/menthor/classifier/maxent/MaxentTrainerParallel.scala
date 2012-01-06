@@ -41,8 +41,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     log("Building the graph")
 
     val graph = new Graph[ProcessingResult]
+    val samplesSize = samples.size
 
-    val masters = (for (i <- 0 to partitions - 1) yield new MasterVertex[C, S]("master" + i, classifier, i, null)).toList
+    val masters = (for (i <- 0 to partitions - 1) yield new MasterVertex[C, S]("master" + i, classifier, i, null, samplesSize)).toList
 
     for (master <- masters) {
       master.masters = masters.filterNot(_.label == master.label)
@@ -70,7 +71,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     classifier
   }
 
-  class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
+  class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]], val totalSamples: Int)
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
     var iteration = 0
@@ -78,6 +79,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     val model = classifier.model
 
     var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
+    
+    var lastLoglikelihood = Double.MaxValue
+    var loglikelihood = 0.0 
 
     def update(): Substep[ProcessingResult] = {
       {
@@ -109,10 +113,14 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
       } then {
         val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
-        incoming.map(_.value.estimatedFeatureFreqDistr).foreach { x =>
-          x.foreachPair { (i, v) =>
+        value.likelihoodsum = 0.0
+        
+        incoming.foreach { m =>
+          m.value.estimatedFeatureFreqDistr.foreachPair { (i, v) =>
             estimatedFeatureFreqDistr(i) += v
           }
+          
+          value.likelihoodsum += m.value.likelihoodsum
         }
 
         val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
@@ -124,13 +132,14 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         for (master <- masters) yield Message(this, master, this.value)
       } then {
         iteration += 1
-        log(label + ": Iteration " + iteration)
+        var likelihoodsum = incoming.map(_.value.likelihoodsum).reduce { (x, y) => x + y }
+        loglikelihood = Math.log(likelihoodsum / totalSamples)          
 
         value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
 
         classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
 
-        //log("Parameters: " + value.parameters)
+        log(label + ": Iteration " + iteration + " - loglikelihood: " + loglikelihood)
 
         for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
       } then {
@@ -180,6 +189,10 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)
+          
+          if (distcls == cls) {
+        	  value.likelihoodsum += Math.exp(prob)
+          }           
 
           encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
@@ -208,5 +221,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     var estimatedFeatureFreqDistr: DenseVector[Double] = _
     var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
     var parameters: Vector[Double] = _
+    var likelihoodsum: Double = 0.0
   }
 }
