@@ -26,6 +26,7 @@ object WikipediaClassifier {
 
     forEachFileIn(new File(folder)) {
       f =>
+        try {
         val xml = XML.loadFile(f)
 
         val id = (xml \\ "article" \ "header" \ "id").text
@@ -44,6 +45,10 @@ object WikipediaClassifier {
             Analyzer.termFrequency(body, extendIndex))
 
           collection += document
+        }
+        } catch {
+          case e : org.xml.sax.SAXParseException => 
+          case e : java.io.IOException => 
         }
     }
     collection.toIterable
