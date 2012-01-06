@@ -21,7 +21,7 @@ import menthor.util.ConditionalFrequencyDistribution
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
-class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feature], iterations : Int = 100) extends Trainer[C, S] with Logged {
+class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feature], iterations: Int = 100) extends Trainer[C, S] with Logged {
   /**
    * Train maximum entropy classifier
    */
@@ -77,7 +77,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
     val model = classifier.model
 
-    var logEmpiricalFeatureFreqDistr: Vector[Double] = _
+    var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
 
     def update(): Substep[ProcessingResult] = {
       {
@@ -106,17 +106,17 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
       } then {
         // sample step
         List()
-      } then {     
+      } then {
         val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
-        
-        incoming.map(_.value.estimatedFeatureFreqDistr).foreach { x => 
+
+        incoming.map(_.value.estimatedFeatureFreqDistr).foreach { x =>
           x.foreachPair { (i, v) =>
             estimatedFeatureFreqDistr(i) += v
           }
         }
-        
+
         val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
-        
+
         classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
         value.parameters = classifier.model.parameters
@@ -144,20 +144,20 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
     val model = classifier.model
-    lazy val encoding = { model.encode(sample) }
+    val encoding = model.encode(sample)
 
-    var logEmpiricalFeatureFreqDistr: Vector[Double] = _
-    var estimatedFeatureFreqDistr: Vector[Double] = DenseVector.zeros[Double](model.parameters.size)
+    var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
+    var estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
     def update(): Substep[ProcessingResult] = {
       {
         if (superstep == 0) {
           value.empiricalFeatureFreqDistr = SparseVector.zeros[Double](model.parameters.size)
           val classOffset = model.classOffset(cls)
-          
+
           encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
-          	value.empiricalFeatureFreqDistr(index) = v
+            value.empiricalFeatureFreqDistr(index) = v
           }
 
           for (neighbor <- masters) yield Message(this, neighbor, this.value)
@@ -176,11 +176,11 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
       } then {
         estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
-        val dist = classifier.probClassify(sample)
-        
+        val dist = classifier.probClassify(encoding)
+
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)
-          
+
           encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
             estimatedFeatureFreqDistr(index) += v * Math.exp(prob)
@@ -204,9 +204,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
   }
 
   case class ProcessingResult {
-    var empiricalFeatureFreqDistr: Vector[Double] = _
-    var estimatedFeatureFreqDistr: Vector[Double] = _
-    var logEmpiricalFeatureFreqDistr: Vector[Double] = _
+    var empiricalFeatureFreqDistr: SparseVector[Double] = _
+    var estimatedFeatureFreqDistr: DenseVector[Double] = _
+    var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
     var parameters: Vector[Double] = _
   }
 }

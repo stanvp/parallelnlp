@@ -13,6 +13,7 @@ import menthor.classifier.maxent.MaxentTrainerParallel
 import scala.collection.mutable.ListBuffer
 import scala.util.logging.ConsoleLogger
 import menthor.classifier.featureselector.IGFeatureSelector
+import gnu.trove.map.hash.TIntDoubleHashMap
 
 object NewsgroupsClassifier {
 
@@ -56,35 +57,40 @@ object NewsgroupsClassifier {
     }
 
     collection.toIterable
-  }
+  } 
 
   def main(args: Array[String]) {
-    if (args.size < 4) {
-      println("Please specify [algorithm] [traning mode] [news group corpus path] [features file] [evaluation]")
+    if (args.size < 5) {
+      println("Please specify [algorithm] [traning mode] [news group corpus train path] [news group corpus test path] [features file] [evaluation]")
       println("algorithm can be: maxent or naivebayes")
       println("traning mode can be: parallel or sequential")
       println("evaluation be: true or false, default is false")
       exit
     }
+    
+    val algorithm = args.first
+    val traningMode = args(1)
+    val trainCorpus = args(2)
+    val testCorpus = args(3)
+    val featuresFile = args(4)
+    val evaluation = if (args.length < 5) false else args(5).toBoolean
 
-    val features = loadFeatures(args(3))
+    val features = loadFeatures(featuresFile)    
 
-    val evaluation = if (args.length < 4) false else args(4).toBoolean
-
-    val train = load(args(2) + "/20news-bydate-train", false)
+    val train = loadCorpus(trainCorpus)
 
     val samples = train.flatMap(d =>
       d.categories.map(c => (c, d)))
 
-    val trainer = args.first match {
+    val trainer = algorithm match {
       case "maxent" =>
-        args(1) match {
+        traningMode match {
           case "parallel" => new MaxentTrainerParallel[Category, Document](5, features) with ConsoleLogger
           case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
       case "naivebayes" =>
-        args(1) match {
+        traningMode match {
           case "parallel" => new NaiveBayesTrainerParallel[Category, Document](10, features) with ConsoleLogger
           case "sequential" => new NaiveBayesTrainer[Category, Document](features) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
@@ -95,9 +101,10 @@ object NewsgroupsClassifier {
     val classifier = trainer.train(categories, samples)
 
     if (evaluation == true) {
+      
       println("Evaluation")
 
-      val test = load(args(2) + "/20news-bydate-test", false)
+      val test = load(testCorpus, false)
 
       var success = 0
       for (d <- test) {

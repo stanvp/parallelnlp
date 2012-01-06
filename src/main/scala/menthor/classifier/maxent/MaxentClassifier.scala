@@ -32,11 +32,10 @@ case class MaxentClassifier[C, S <: Sample](val model: MaxentModel[C, S]) extend
     probClassify(model.encode(sample))
   }  
   
-  
-  def probClassify(encoding: Vector[Double]): ProbabilityDistribution[C] = {
+  def probClassify(encoding: SparseVector[Double]): ProbabilityDistribution[C] = {
     val prob = new HashMap[C, Double]
 
-    for ((cls, index) <- model.classes.zipWithIndex) {
+    for (cls <- model.classes) {
       var total = 0.0
 
       encoding.foreachNonZeroPair { (index, value) =>

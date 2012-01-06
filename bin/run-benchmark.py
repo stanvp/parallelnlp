@@ -1,5 +1,12 @@
 # Script for benchmarking classifiers.
-# command line args: [result file name] [algorithm] [traning mode] [wikipedia corpus path]
+# command line args: 
+#	[result file name] 
+#   [algorithm] 
+#   [traning mode]
+#   [wikipedia train corpus file] 
+#   [wikipedia test corpus file] 
+#   [wikipedia features file]
+#   [evaluation]
 # algorithm can be: maxent or naivebayes
 # traning mode can be: parallel or sequential
 
@@ -12,6 +19,11 @@ out = file('bench/%s.bench' % sys.argv[1], 'w')
 algorithm = sys.argv[2]
 trainingmode = sys.argv[3]
 corpusPath = sys.argv[4]
+testCorpusPath = sys.argv[5]
+featuresCorpusPath = sys.argv[6]
+evaluation = sys.argv[7]
+
+javaPath = "java"
 
 print "Running %s - %s" % (algorithm, trainingmode)
 print 'corpusPath = %s' % corpusPath
@@ -29,7 +41,7 @@ for numCores in [2,3,4,5,6,7,8]:
 
     for run in range(5):
         start = time()
-        cmd = "time scala -cp parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.WikipediaClassifier %s %s %s" % (algorithm, trainingmode, corpusPath)
+        cmd = "time "+ javaPath + " " + opts + " -cp parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.WikipediaClassifier %s %s %s %s %s %s" % (algorithm, trainingmode, corpusPath, testCorpusPath, featuresCorpusPath, evaluation)
         print 'running command: %s' % cmd
 
         os.system(cmd)

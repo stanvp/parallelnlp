@@ -38,7 +38,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
     
     log("Processing samples")
     
-    val encodings = Array.ofDim[(C, SparseVector[Double])](samples.size)
+    val encodings = Array.ofDim[SparseVector[Double]](samples.size)
     val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
     
     var j = 0
@@ -47,7 +47,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
       val classOffset = model.classOffset(cls)
       val encoding = model.encode(sample)
       
-      encodings(j) = ((cls,encoding))
+      encodings(j) = encoding
       
       encoding.foreachNonZeroPair { (i, v) =>
         val index = classOffset + i
@@ -66,7 +66,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
 
       estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
-      for ((_, encoding) <- encodings) {        
+      for (encoding <- encodings) {        
         val dist = classifier.probClassify(encoding)
         
         for ((distcls, prob) <- dist) {

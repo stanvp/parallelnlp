@@ -16,19 +16,21 @@ import menthor.classifier.featureselector.IGFeatureSelector
 import java.io.FileWriter
 import gnu.trove.map.hash.TIntObjectHashMap
 import gnu.trove.procedure.TObjectIntProcedure
+import gnu.trove.procedure.TIntDoubleProcedure
 
-object SelectFeatures {
+object BuildCorpus {
 
   def main(args: Array[String]) {
     if (args.size < 4) {
-      println("Please specify [corpus] [features size] [corpus path] [output file path]")      
+      println("Please specify [corpus] [features size] [corpus path] [output corpus file path] [output feature file path]")      
       println("corpus can be: moviereviews, newsgroups or wikipedia")
       exit
     }
     
     val size = args(1).toInt
-    val corpusPath = args(2)    
-    val outputFilePath = args(3)
+    val corpusPath = args(2)
+    val corpusFilePath = args(3)
+    val featuresFilePath = args(4)
 
     val (collection, categories) = args.first match {
       case "moviereviews" => (MovieReviewClassifier.load(corpusPath, true), MovieReviewClassifier.categories)
@@ -53,13 +55,29 @@ object SelectFeatures {
       }
     })
     
-    val fw = new FileWriter(outputFilePath, true)
+    val featuresFile = new FileWriter(featuresFilePath, true)
     
     for ((feature, score) <- features) {
-      println(index.get(feature) + " " + score)
-      fw.write(index.get(feature) + " " + score + "\n")
+      println(feature + " | " + index.get(feature) + " | " + score)
+      featuresFile.write(feature + " | " + index.get(feature) + " | " + score + "\n")
     }
       
-    fw.close()
+    featuresFile.close()
+    
+    val corpusFile = new FileWriter(corpusFilePath, true) 
+    
+    for (document <- collection) {
+      val encoding = ListBuffer[String]()
+      document.termFrequency.forEachEntry(new TIntDoubleProcedure {
+        override def execute(key: Int, value: Double) : Boolean = {
+          encoding += key + ":" + value
+          true
+        }
+      })
+      
+      corpusFile.write(document.categories.mkString(",") + " | " + document.name + " | " + encoding.mkString(" ") + "\n")
+    }
+    
+    corpusFile.close()
   }
 }

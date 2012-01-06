@@ -11,21 +11,24 @@ class MaxentModel[C, S <: Sample](
   val classes: List[C],
   val features: List[Feature],
   val parameters: Vector[Double]) {
-    
+
   val featuresSize = features.size
-  val classOffset = HashMap(classes.zipWithIndex.map(x => (x._1, x._2 * featuresSize)) :_*)
+  val classOffset = HashMap(classes.zipWithIndex.map(x => (x._1, x._2 * featuresSize)): _*)
 
   def encode(sample: S): SparseVector[Double] = {
     val encoding = SparseVector.zeros[Double](features.size)
 
     for ((feature, i) <- features.zipWithIndex) {
-      encoding(i) = sample.features.get(feature) / sample.total
+      val v = sample.features.get(feature) / sample.total
+      if (!v.isNaN()) {
+        encoding(i) = v
+      }
     }
 
     encoding
   }
-  
-  def parameter(cls: C, i: Int) : Double = {
+
+  def parameter(cls: C, i: Int): Double = {
     parameters(classOffset(cls) + i)
   }
 }
