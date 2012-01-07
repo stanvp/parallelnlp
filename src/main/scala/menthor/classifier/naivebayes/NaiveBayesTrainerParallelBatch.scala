@@ -38,13 +38,14 @@ class NaiveBayesTrainerParallelBatch[C, S <: Sample](partitions: Int, features: 
     log("Processing samples")
 
     graph.start()
-    graph.iterate(2)
+    graph.iterate(1)
 
     graph.terminate()
-    
-    val value = graph.vertices.first.value
 
     log("Aggregating results")
+
+    val value = new ProcessingResult[C]
+    ProcessingResult.merge(value, graph.vertices.map(_.value))
 
     val model = new NaiveBayesModel[C, S](
       classes,
@@ -60,30 +61,23 @@ class NaiveBayesTrainerParallelBatch[C, S <: Sample](partitions: Int, features: 
     classifier
   }
 
-  
-
   class MasterVertex[C, S <: Sample](label: String, samples: Iterable[(C, S)])
     extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
 
     def update(): Substep[ProcessingResult[C]] = {
-      {
-        for ((cls, sample) <- samples) {
-          sample.features.forEachEntry(new TIntDoubleProcedure {
-            override def execute(feature: Int, v: Double): Boolean = {
-              value.classFeatureFreqDistr(cls).increment(feature, v)
-              value.featureFreqDistr.increment(feature, v)
+      for ((cls, sample) <- samples) {
+        sample.features.forEachEntry(new TIntDoubleProcedure {
+          override def execute(feature: Int, v: Double): Boolean = {
+            value.classFeatureFreqDistr(cls).increment(feature, v)
+            value.featureFreqDistr.increment(feature, v)
 
-              true
-            }
-          })
+            true
+          }
+        })
 
-          value.classSamplesFreqDistr.increment(cls)
-        }
-        for (neighbor <- graph.vertices) yield Message(this, neighbor, this.value)
-      } then {
-        ProcessingResult.merge(value, incoming.map(_.value))
-        List()
+        value.classSamplesFreqDistr.increment(cls)
       }
+      List()
     }
   }
 }
