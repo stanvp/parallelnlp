@@ -7,7 +7,7 @@ import scala.collection.JavaConversions._
 
 class FrequencyDistribution[T](_distribution : TObjectDoubleHashMap[T] = new TObjectDoubleHashMap[T]()) {
   private[this] val distribution : TObjectDoubleHashMap[T] = _distribution
-  private var _total = 0.0
+  private var _total = _distribution.values.sum
   
   def increment(sample: T, value: Double = 1.0) {
 	  distribution.put(sample, distribution.get(sample) + value)

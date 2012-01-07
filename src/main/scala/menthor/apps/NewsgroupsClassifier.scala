@@ -6,8 +6,7 @@ import java.io.File
 import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
 import scala.util.Random
-import menthor.classifier.naivebayes.NaiveBayesTrainer
-import menthor.classifier.naivebayes.NaiveBayesTrainerParallel
+import menthor.classifier.naivebayes._
 import menthor.classifier.maxent.MaxentTrainer
 import menthor.classifier.maxent.MaxentTrainerParallel
 import scala.collection.mutable.ListBuffer
@@ -63,7 +62,7 @@ object NewsgroupsClassifier {
     if (args.size < 5) {
       println("Please specify [algorithm] [traning mode] [news group corpus train path] [news group corpus test path] [features file] [evaluation]")
       println("algorithm can be: maxent or naivebayes")
-      println("traning mode can be: parallel or sequential")
+      println("traning mode can be: parallel, parallelbatch or sequential")
       println("evaluation be: true or false, default is false")
       exit
     }
@@ -91,7 +90,8 @@ object NewsgroupsClassifier {
         }
       case "naivebayes" =>
         traningMode match {
-          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](8, features) with ConsoleLogger
+          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](50, features) with ConsoleLogger
+          case "parallelbatch" => new NaiveBayesTrainerParallelBatch[Category, Document](50, features) with ConsoleLogger
           case "sequential" => new NaiveBayesTrainer[Category, Document](features) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }
