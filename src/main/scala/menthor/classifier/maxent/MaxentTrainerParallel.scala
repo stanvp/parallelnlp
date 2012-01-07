@@ -98,12 +98,8 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
           }
 
           logEmpiricalFeatureFreqDistr = empiricalFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
-          value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
-
-          for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
-        } else {
-          List()
         }
+        List()
       } then {
         // superstep == 2 sample step
         List()
@@ -163,8 +159,8 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     val model = classifier.model
     val encoding = model.encode(sample)
 
-    var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
-    var estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
+    var logEmpiricalFeatureFreqDistr: SparseVector[Double] = _
+    var estimatedFeatureFreqDistr = SparseVector.zeros[Double](model.parameters.size)
 
     def update(): Substep[ProcessingResult] = {
       {
@@ -185,10 +181,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         // superstep == 1 - masters step
         List()
       } then {
-        if (superstep == 2) {
-          logEmpiricalFeatureFreqDistr = incoming.first.value.logEmpiricalFeatureFreqDistr
-          value.logEmpiricalFeatureFreqDistr = logEmpiricalFeatureFreqDistr
-        }
+        // superstep == 2 - masters step
         List()
       } then {
         estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
@@ -225,9 +218,8 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
   }
 
   case class ProcessingResult {
-    var empiricalFeatureFreqDistr: SparseVector[Double] = _
-    var estimatedFeatureFreqDistr: DenseVector[Double] = _
-    var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
+    var empiricalFeatureFreqDistr: Vector[Double] = _
+    var estimatedFeatureFreqDistr: Vector[Double] = _
     var parameters: Vector[Double] = _
     var likelihoodsum: Double = 0.0
   }
