@@ -24,6 +24,7 @@ case class NaiveBayesModel[C, S <: Sample](
   classSamplesFreqDistr: FrequencyDistribution[C] // N_c and N
   ) {
   val featureset = HashSet(features: _*)
+  
   def encode(sample: S): TIntDoubleHashMap = {
     val result = new TIntDoubleHashMap
 

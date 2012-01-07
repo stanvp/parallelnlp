@@ -91,7 +91,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
       
       loglikelihood = Math.log(likelihoodsum / samplesSize)    
       
-      if (loglikelihood.isNaN() || loglikelihood > lastLoglikelihood) {
+      if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
     	  log("Cutoff at iteration " + (n - 1))
     	  cutoff = true    	  
       } else {

@@ -79,9 +79,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     val model = classifier.model
 
     var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
-    
+
     var lastLoglikelihood = Double.MaxValue
-    var loglikelihood = 0.0 
+    var loglikelihood = 0.0
 
     def update(): Substep[ProcessingResult] = {
       {
@@ -114,12 +114,12 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
         value.likelihoodsum = 0.0
-        
+
         incoming.foreach { m =>
           m.value.estimatedFeatureFreqDistr.foreachPair { (i, v) =>
             estimatedFeatureFreqDistr(i) += v
           }
-          
+
           value.likelihoodsum += m.value.likelihoodsum
         }
 
@@ -132,14 +132,22 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         for (master <- masters) yield Message(this, master, this.value)
       } then {
         iteration += 1
+
         var likelihoodsum = incoming.map(_.value.likelihoodsum).reduce { (x, y) => x + y }
-        loglikelihood = Math.log(likelihoodsum / totalSamples)          
+        loglikelihood = Math.log(likelihoodsum / totalSamples)
+        
+        if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+        	log(label + ": Cutoff at iteration " + (iteration - 1))    
+        	graph.workers.foreach(w => w ! "Stop")
+        } else {
+          value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
 
-        value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
+          classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
 
-        classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
+          log(label + ": Iteration " + iteration + " - loglikelihood: " + loglikelihood)
+        }
 
-        log(label + ": Iteration " + iteration + " - loglikelihood: " + loglikelihood)
+        lastLoglikelihood = loglikelihood
 
         for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
       } then {
@@ -189,10 +197,10 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)
-          
+
           if (distcls == cls) {
-        	  value.likelihoodsum += Math.exp(prob)
-          }           
+            value.likelihoodsum += Math.exp(prob)
+          }
 
           encoding.foreachNonZeroPair { (i, v) =>
             val index = classOffset + i
