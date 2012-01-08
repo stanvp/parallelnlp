@@ -7,10 +7,8 @@ import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
 import scala.util.Random
 import menthor.classifier.FeatureSelector
-import menthor.classifier.naivebayes.NaiveBayesTrainer
-import menthor.classifier.naivebayes.NaiveBayesTrainerParallel
-import menthor.classifier.maxent.MaxentTrainer
-import menthor.classifier.maxent.MaxentTrainerParallel
+import menthor.classifier.naivebayes._
+import menthor.classifier.maxent._
 import scala.collection.mutable.ListBuffer
 import scala.util.logging.ConsoleLogger
 import menthor.classifier.featureselector.IGFeatureSelector
@@ -61,6 +59,7 @@ object MovieReviewClassifier {
 	  case "maxent" =>
 	  	 args(1) match {
 	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, features) with ConsoleLogger
+	  	   case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](48, features) with ConsoleLogger
 	  	   case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }	    

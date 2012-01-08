@@ -29,7 +29,7 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
 
-    log("Started MaxentTrainerParallel")
+    log("Started MaxentTrainerParallelBatch")
 
     val model = new MaxentModel[C, S](
       classes,
@@ -51,11 +51,11 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     log("Processing samples")
 
     graph.start()
-    graph.iterate(iterations * 7)
+    graph.iterate(iterations * 3)
 
     graph.terminate()
 
-    log("Finished MaxentTrainerParallel")
+    log("Finished MaxentTrainerParallelBatch")
 
     classifier
   }
@@ -75,7 +75,9 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     var likelihoodsum = 0.0
     var lastLoglikelihood = Double.MaxValue
     var loglikelihood = 0.0
-    
+
+    var cutoff = false
+
     value.parameters = DenseVector.zeros[Double](model.parameters.size)
 
     def update(): Substep[ProcessingResult] = {
@@ -106,48 +108,54 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
           List()
         }
       } then {
-        estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
+        if (!cutoff) {
+          iteration += 1
 
-        likelihoodsum = 0.0
+          estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
-        for ((cls, encoding) <- encodings) {
-          val dist = classifier.probClassify(encoding)
+          likelihoodsum = 0.0
 
-          for ((distcls, prob) <- dist) {
-            val classOffset = model.classOffset(distcls)
+          for ((cls, encoding) <- encodings) {
+            val dist = classifier.probClassify(encoding)
 
-            if (distcls == cls) {
-              likelihoodsum += Math.exp(prob)
-            }
+            for ((distcls, prob) <- dist) {
+              val classOffset = model.classOffset(distcls)
 
-            encoding.foreachNonZeroPair { (i, v) =>
-              val index = classOffset + i
-              estimatedFeatureFreqDistr(index) += v * Math.exp(prob)
+              if (distcls == cls) {
+                likelihoodsum += Math.exp(prob)
+              }
+
+              encoding.foreachNonZeroPair { (i, v) =>
+                val index = classOffset + i
+                estimatedFeatureFreqDistr(index) += v * Math.exp(prob)
+              }
             }
           }
-        }
 
-        loglikelihood = Math.log(likelihoodsum / samplesSize)
+          loglikelihood = Math.log(likelihoodsum / samplesSize)
 
-        if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
-          log("Cutoff at iteration " + (iteration - 1))
-          graph.workers.foreach(w => w ! "Stop")
-          List()
+//          if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+//            log("Cutoff at iteration " + (iteration - 1))
+//            cutoff = true
+//            List()
+//          } else {
+            val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
+            value.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
+
+            lastLoglikelihood = loglikelihood
+
+            for (neighbor <- graph.vertices) yield Message(this, neighbor, this.value)
+//          }
         } else {
-          val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
-          value.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
-
-          lastLoglikelihood = loglikelihood
-          
-          log("Iteration: " + iteration + " - loglikelihood: " + loglikelihood)
-          
-          for (neighbor <- graph.vertices) yield Message(this, neighbor, this.value)
-        }                
-      } then {        
-    	  value.parameters = (incoming.map(_.value.parameters).reduce { (x, y) => x + y } / graph.vertices.size)
-          classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
-          
           List()
+        }
+      } then {
+        if (!incoming.isEmpty) {
+          value.parameters = (incoming.map(_.value.parameters).reduce { (x, y) => x + y } / incoming.size)
+          classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
+        }
+        log("Iteration: " + iteration + " - loglikelihood: " + loglikelihood)
+        List()
       }
     }
   }

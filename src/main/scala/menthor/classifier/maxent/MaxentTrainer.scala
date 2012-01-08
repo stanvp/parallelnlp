@@ -64,10 +64,12 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
     var likelihoodsum = 0.0
     var loglikelihood = 0.0
     var lastLoglikelihood = Double.MaxValue
-    var n = 1
+    var n = 0
     var cutoff = false
 
     while (!cutoff && n <= iterations) {
+      n += 1
+      
       estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
       likelihoodsum = 0.0
@@ -99,7 +101,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
         classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
         lastLoglikelihood = loglikelihood
-        n += 1
+        
         log("Iteration: " + n + " - loglikelihood: " + loglikelihood)
       }
     }

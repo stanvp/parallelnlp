@@ -62,7 +62,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     log("Processing samples")
 
     graph.start()
-    graph.iterate(iterations * 7)
+    graph.iterate(iterations * 5)
 
     graph.terminate()
 
@@ -101,12 +101,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         }
         List()
       } then {
-        // superstep == 2 sample step
-        List()
-      } then {
-        // sample step
-        List()
-      } then {
         val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
         value.likelihoodsum = 0.0
@@ -132,16 +126,16 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         var likelihoodsum = incoming.map(_.value.likelihoodsum).reduce { (x, y) => x + y }
         loglikelihood = Math.log(likelihoodsum / totalSamples)
         
-        if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
-        	log(label + ": Cutoff at iteration " + (iteration - 1))    
-        	graph.workers.foreach(w => w ! "Stop")
-        } else {
-          value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / masters.size
+//        if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+//        	log(label + ": Cutoff at iteration " + (iteration - 1))    
+//        	graph.workers.foreach(w => w ! "Stop")
+//        } else {
+          value.parameters = incoming.map(_.value.parameters).reduce { (x, y) => x + y } / 2
 
           classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
 
           log(label + ": Iteration " + iteration + " - loglikelihood: " + loglikelihood)
-        }
+//        }
 
         lastLoglikelihood = loglikelihood
 
@@ -177,12 +171,6 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         } else {
           List()
         }
-      } then {
-        // superstep == 1 - masters step
-        List()
-      } then {
-        // superstep == 2 - masters step
-        List()
       } then {
         estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 

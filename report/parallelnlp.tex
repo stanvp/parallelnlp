@@ -39,6 +39,24 @@ How to extend and reusability
 
 \chapter{Implementation}
 
+\section{Training corpus compression}
+
+The training corpus that are used comes in plain text or xml formats. Parsing large number of files is time consuming and does not give information regarding the performance of the algorithm and only may obfuscate performance results, and because the algorithms are run many time against the same data minimizing the parsing time and I/O time is important. That is why training data is parsed and compressed in advanced.
+
+First, all training data is loaded and feature selection is performed, after the most useful features are decided each features is given a unique id, and the triple id, features, and information gain is written to a files, see figure \ref{featureextract}.
+
+\begin{figure}[h!]
+ \label{featureextract}
+  \centering 
+2507 $|$ bad $|$ -0.2579069473576291 \\
+3081 $|$ worst $|$ -0.2638446978715786  \\
+1425 $|$ stupid $|$ -0.2752135575766913 \\
+8286 $|$ boring $|$ -0.27746205051618666 \\
+1110 $|$ waste $|$ -0.2813770454287048 \\
+.......
+  \caption{Features file extract}
+\end{figure}
+
 \chapter{Results}
 
 \chapter{How to extend and reusability}

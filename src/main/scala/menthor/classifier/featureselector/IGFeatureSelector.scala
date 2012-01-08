@@ -7,6 +7,7 @@ import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
 import menthor.util.CollectionUtils._
 import gnu.trove.procedure.TIntDoubleProcedure
+import scala.collection.mutable.HashSet
 
 /**
  * Information gain based feature selector
@@ -56,7 +57,7 @@ class IGFeatureSelector[C, S <: Sample](val N: Int) extends FeatureSelector[C] {
     classes: List[C],
     samples: Iterable[(C, S)]): Iterable[(Feature, Double)] = {
 
-    val featureFreqDistr = new FrequencyDistribution[Feature]
+    val features = new HashSet[Feature]
     val classSamplesFreqDistr = new FrequencyDistribution[C]
 
     val classFeatureBinaryFreqDistr = new ConditionalFrequencyDistribution[C, Feature]
@@ -65,7 +66,7 @@ class IGFeatureSelector[C, S <: Sample](val N: Int) extends FeatureSelector[C] {
     for ((cls, sample) <- samples) {
       sample.features.forEachEntry(new TIntDoubleProcedure {
         override def execute(feature: Int, value: Double): Boolean = {
-          featureFreqDistr.increment(feature, value)
+          features += feature
           classFeatureBinaryFreqDistr(cls).increment(feature)
           featureBinaryFreqDistr.increment(feature)
           true
@@ -77,7 +78,7 @@ class IGFeatureSelector[C, S <: Sample](val N: Int) extends FeatureSelector[C] {
 
     select(
       classes,
-      featureFreqDistr.samples.toList,
+      features.toList,
       classSamplesFreqDistr,
       classFeatureBinaryFreqDistr,
       featureBinaryFreqDistr)
