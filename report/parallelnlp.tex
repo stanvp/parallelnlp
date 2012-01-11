@@ -37,10 +37,10 @@
   columns=flexible,
   basicstyle={\small\ttfamily},
   numbers=none,
-  frame=single,
   breaklines=true,
   breakatwhitespace=true
-  tabsize=3
+  tabsize=3,
+  captionpos=b
 }
 
 \begin{document}
@@ -257,7 +257,7 @@ single value that is iteratively updated during processing - thus, an algorithm 
 
 For example, page rank algorithm can be implemented as follows:
 
-\begin{lstlisting}[language=scala]
+\begin{lstlisting}[language=scala, caption={Page rank algorithm}, label={listing:pagerank}]
 class PageRankVertex extends Vertex[Double](0.0d) {
   def update() = {
     var sum = incoming.foldLeft(0)(_ + _.value)
@@ -268,8 +268,6 @@ class PageRankVertex extends Vertex[Double](0.0d) {
       List()
   }
 }
-  \caption{Page rank algorithm}
-  \label{listing:pagerank}
 \end{lstlisting}
 
 \subsection{References}

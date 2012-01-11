@@ -6,14 +6,16 @@ import java.io.File
 import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
 import scala.util.Random
+import menthor.classifier.Classifier
 import menthor.classifier.naivebayes._
 import menthor.classifier.maxent._
 import scala.collection.mutable.ListBuffer
 import scala.util.logging.ConsoleLogger
 import menthor.classifier.featureselector.IGFeatureSelector
 import gnu.trove.map.hash.TIntDoubleHashMap
+import benchmark.TicToc
 
-object NewsgroupsClassifier {
+object NewsgroupsClassifier extends TicToc {
 
   val categories = List(
     "alt.atheism",
@@ -55,25 +57,27 @@ object NewsgroupsClassifier {
     }
 
     collection.toIterable
-  } 
+  }
 
   def main(args: Array[String]) {
-    if (args.size < 5) {
-      println("Please specify [algorithm] [traning mode] [news group corpus train path] [news group corpus test path] [features file] [evaluation]")
+    if (args.size < 8) {
+      println("Please specify [algorithm] [traning mode] [news group corpus train path] [news group corpus test path] [features file] [evaluation] [benchmark result file] [benchmark iteration]")
       println("algorithm can be: maxent or naivebayes")
       println("traning mode can be: parallel, parallelbatch or sequential")
-      println("evaluation be: true or false, default is false")
+      println("evaluation be: true or false")
       exit
     }
-    
+
     val algorithm = args.first
     val traningMode = args(1)
     val trainCorpus = args(2)
     val testCorpus = args(3)
     val featuresFile = args(4)
-    val evaluation = if (args.length < 5) false else args(5).toBoolean
+    val evaluation = args(5).toBoolean
+    val benchmarkResultFile = args(6)
+    val benchmarkIterations = args(7).toInt
 
-    val features = loadFeatures(featuresFile)    
+    val features = loadFeatures(featuresFile)
 
     val train = loadCorpus(trainCorpus)
 
@@ -98,10 +102,24 @@ object NewsgroupsClassifier {
       case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")
     }
 
-    val classifier = trainer.train(categories, samples)
+    var classifier: Classifier[Category, Document] = null
+
+    for (i <- 1 to benchmarkIterations + 1) {
+      if (i == 1) {
+    	classifier = trainer.train(categories, samples)
+      } else {
+        tic()
+
+        classifier = trainer.train(categories, samples)
+
+        toc("i_" + (i - 1))
+      }
+    }
+
+    writeTimesLog(benchmarkResultFile)
 
     if (evaluation == true) {
-      
+
       println("Evaluation")
 
       val test = load(testCorpus, false)
