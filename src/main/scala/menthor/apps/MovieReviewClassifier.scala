@@ -59,7 +59,7 @@ object MovieReviewClassifier {
 	  case "maxent" =>
 	  	 args(1) match {
 	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, features) with ConsoleLogger
-	  	   case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](48, features) with ConsoleLogger
+	  	   case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](8, features) with ConsoleLogger
 	  	   case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
 	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
 	  	 }	    
