@@ -1,10 +1,10 @@
 package menthor.classifier
 package naivebayes
 
-import menthor.processing.Graph
-import menthor.processing.Message
-import menthor.processing.Substep
-import menthor.processing.Vertex
+import processing.parallel.Graph
+import processing.parallel.Message
+import processing.parallel.Substep
+import processing.parallel.Vertex
 import menthor.classifier.FeatureSelector
 import menthor.classifier.Sample
 import menthor.util.ConditionalFrequencyDistribution
@@ -74,7 +74,7 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
   class MasterVertex[C, S <: Sample](label: String)
     extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
 
-    def update(): Substep[ProcessingResult[C]] = {
+    def update(superstep: Int, incoming: List[Message[ProcessingResult[C]]]): Substep[ProcessingResult[C]] = {
       {
         // sample step
         List()
@@ -88,7 +88,7 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
   class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S)
     extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
 
-    def update(): Substep[ProcessingResult[C]] = {
+    def update(superstep: Int, incoming: List[Message[ProcessingResult[C]]]): Substep[ProcessingResult[C]] = {
       {
         sample.features.forEachEntry(new TIntDoubleProcedure {
           override def execute(feature: Int, v: Double): Boolean = {

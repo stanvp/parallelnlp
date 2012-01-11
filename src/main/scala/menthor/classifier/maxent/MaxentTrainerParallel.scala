@@ -2,10 +2,10 @@ package menthor.classifier
 package maxent
 
 import scala.collection.mutable.HashMap
-import menthor.processing.Graph
-import menthor.processing.Message
-import menthor.processing.Substep
-import menthor.processing.Vertex
+import processing.parallel.Graph
+import processing.parallel.Message
+import processing.parallel.Substep
+import processing.parallel.Vertex
 import scalala.library.Library._
 import scalala.library.LinearAlgebra._
 import scalala.library.Numerics._
@@ -83,7 +83,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     var lastLoglikelihood = Double.MaxValue
     var loglikelihood = 0.0
 
-    def update(): Substep[ProcessingResult] = {
+    def update(superstep: Int, incoming: List[Message[ProcessingResult]]): Substep[ProcessingResult] = {
       {
         // superstep == 0 - sample step
         List()
@@ -156,7 +156,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     var logEmpiricalFeatureFreqDistr: SparseVector[Double] = _
     var estimatedFeatureFreqDistr = SparseVector.zeros[Double](model.parameters.size)
 
-    def update(): Substep[ProcessingResult] = {
+    def update(superstep: Int, incoming: List[Message[ProcessingResult]]): Substep[ProcessingResult] = {
       {
         if (superstep == 0) {
           value.empiricalFeatureFreqDistr = SparseVector.zeros[Double](model.parameters.size)

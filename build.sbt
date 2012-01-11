@@ -23,15 +23,16 @@ excludedFiles in assembly := { (bases: Seq[File]) =>
 resolvers ++= Seq(
   ScalaToolsSnapshots,
   DefaultMavenRepository,
+  "Akka Repo" at "http://akka.io/repository",
   "ScalaNLP Maven2" at "http://repo.scalanlp.org/repo",
   "ondex" at "http://ondex.rothamsted.bbsrc.ac.uk/nexus/content/groups/public",
   "OpenNLP Maven Repository" at "http://opennlp.sourceforge.net/maven2"  
 )
 
-libraryDependencies ++= Seq(
+libraryDependencies ++= Seq(  
   "epfl" %% "libmenthor" % "0.1",
   "org.scalala" %% "scalala" % "1.0.0.RC2-SNAPSHOT",
   "org.apache.opennlp" % "opennlp-tools" % "1.5.2-incubating",
-  "net.sf.trove4j" % "trove4j" % "3.0.2",
+  "net.sf.trove4j" % "trove4j" % "3.0.2",  
   "org.scalatest" %% "scalatest" % "1.6.1" % "test"
 )

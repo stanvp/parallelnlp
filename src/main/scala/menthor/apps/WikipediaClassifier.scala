@@ -8,8 +8,7 @@ import scala.collection.mutable.HashMap
 import menthor.util.FileUtils._
 import scala.util.Random
 import menthor.classifier.naivebayes._
-import menthor.classifier.maxent.MaxentTrainer
-import menthor.classifier.maxent.MaxentTrainerParallel
+import menthor.classifier.maxent._
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.HashSet
 import scala.util.logging.ConsoleLogger
@@ -80,6 +79,7 @@ object WikipediaClassifier {
       case "maxent" =>
         traningMode match {
           case "parallel" => new MaxentTrainerParallel[Category, Document](4, features) with ConsoleLogger
+          case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](48, features) with ConsoleLogger
           case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }

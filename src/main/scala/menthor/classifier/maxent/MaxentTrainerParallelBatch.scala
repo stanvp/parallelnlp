@@ -2,10 +2,10 @@ package menthor.classifier
 package maxent
 
 import scala.collection.mutable.HashMap
-import menthor.processing.Graph
-import menthor.processing.Message
-import menthor.processing.Substep
-import menthor.processing.Vertex
+import processing.parallel.Graph
+import processing.parallel.Message
+import processing.parallel.Substep
+import processing.parallel.Vertex
 import scalala.library.Library._
 import scalala.library.LinearAlgebra._
 import scalala.library.Numerics._
@@ -80,7 +80,7 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
 
     value.parameters = DenseVector.zeros[Double](model.parameters.size)
 
-    def update(): Substep[ProcessingResult] = {
+    def update(superstep: Int, incoming: List[Message[ProcessingResult]]): Substep[ProcessingResult] = {
       {
         if (superstep == 0) {
           val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)

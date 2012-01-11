@@ -2,10 +2,6 @@ package menthor.classifier
 package maxent
 
 import scala.collection.mutable.HashMap
-import menthor.processing.Graph
-import menthor.processing.Message
-import menthor.processing.Substep
-import menthor.processing.Vertex
 import scalala.library.Library._
 import scalala.library.LinearAlgebra._
 import scalala.library.Statistics._

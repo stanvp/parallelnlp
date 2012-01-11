@@ -1,9 +1,48 @@
 \documentclass{report}
+\usepackage[utf8]{inputenc}
 \usepackage{fullpage}
+\usepackage{times,amsmath,pslatex,graphicx}
+\usepackage{amssymb}
+\usepackage{amsfonts}
 \usepackage{cite}
-\renewcommand{\baselinestretch}{2}
+\usepackage{listings}
+\usepackage{epstopdf}
 \author{Stanislav Peshterliev}
-\title{Parallel NLP Algorithms in Scala}
+\title{Parallel Natural Language Processing Algorithms in Scala}
+
+% "define" Scala
+\lstdefinelanguage{scala}{
+  morekeywords={abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]"""
+}
+ 
+% Default settings for code listings
+\lstset{frame=tb,
+  language=scala,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  frame=single,
+  breaklines=true,
+  breakatwhitespace=true
+  tabsize=3
+}
+
 \begin{document}
 \maketitle
 
@@ -11,31 +50,267 @@
 
 \chapter{Introduction}
 
-14.01.2011 - deadline 
+Implementing machine learning algorithms for Natural Language Processing (NLP) on large data sets such as the web is hard.  Even though much research has focused on making sequential algorithms more scalable, their running times is continue to be prohibitively long as the data is growing much faster then the computational power of single processor. Meanwhile, parallelization remains challenging for this class of problems. 
 
-20-30 pages
+The aim of this semester project is to explore different strategies for parallizing Maximum Entropy\cite{berger_a1-etal:1996a} and Naive Bayesian\cite{Rennie03} - two widely used machine learning classification algorithms.  The project focus is on implementing and benchmarking different parallelized versions of these algorithms with application to text classification problem. We chose text classification because it is relatively easy to find a large corpus to experiment, and  because this is one of the most widely spread Natural Language Processing application, i.e. spam classification. 
 
-Parallel Programming method
+The parallization is based Menthor\cite{oai:infoscience.epfl.ch:165111} - a framework for implementing parallel and distributed machine learning algorithms on large graphs developed at EPFL. Two parallelization strategies are considered: vertex for each document, and vertex for partition of document; both approaches are analyzed in terms of computational efficiency and scalability.
 
-From formalism to implementation
+Motivation, problem description, design decisions made (citing references), architecture, and experimental results
 
-Tunning
+\section{Related work}
 
-Results
+The recent research is focused mainly on parallizing the algorithms with MapReduce\cite{Dean:2008:MSD:1327452.1327492} framework widely used by Google. Cheng-Tao Chu et al. have shown an linear improvement in the speed to the number of processes \cite{conf/nips/ChuKLYBNO06}
 
-How to extend and reusability
+\section{Overview}
 
-\cite{berger_a1-etal:1996a}
-\cite{conf/nips/MannMMSW09}
+The report is structured as follows: 
 
-\section{Your Section title Here}
-\subsection{Your Subsection title here}
-\subsubsection{Your subsubsection title here}
-\paragraph{Your paragraph title here}
+Chapter 2 presents the implemented classification algorithms
+chapter 3 presents the parallization strategies
+chapter 3 architecture
+chapter 4 experimental results
+chapter 5 extensions and future work
 
-\chapter{Algorithms}
+\section{Terminology}
 
-\chapter{Text classification}
+$S$ - set of samples, $s$ - a sample from S \\
+$C$ - set of classes, $c$ - a class from C
+
+\chapter{Classification Algorithms}
+
+In machine learning classification algorithms fall into the class of supervised machine learning method. They work by learning from some known set of labled training samples. The task is to derive a model that  given unlabled sample to determine class it belongs.
+
+To give context for further discussions, we consider the text classification  where samples are documents and classes are categories. The training set for this problem consist of a collection of categorized documents. The trained classifier predicts the category of not categorized document. An important step in training is deciding which words to take into consideration because there are common words which occur in all classes and taking them into account only obscures the results of classification, for example in English such words are "a", "an", "the". The set of words that we use to represent a document is called feature set, and each word is called feature. In the following section, we will discuss a strategy for automatically determining the most useful feature from training data.
+
+An example of text classification application is spam filtering, where classification algorithm has to label email or other text document as spam or not not spam. 
+
+The following section gives brief description of Maximum Entropy and Naive Bayes classifier, and, also, an efficient algorithm for feature selection Information Gain.
+
+\section{Maximum entropy}
+
+Kamal Nigam et al. describe Maximum entropy as: A general technique for estimating probability distributions from data. The overriding principle in maximum entropy is that when nothing is known, the distribution should be as uniform as possible, that is, have maximal entropy. Labeled training data is used to derive a set of constraints for the model that characterize the class-specific expectations for the distribution. Constraints are represented as expected values of "features", any real-valued function of an example. The improved iterative scaling algorithm finds the maximum entropy distribution that is consistent with the given constraints.\cite{oai:CiteSeerPSU:93050}
+
+Let any real valued function on a sample and class to a feature, $f : S \times C \rightarrow R$. Method for selection the most descriptive feature is described in section \ref{featureselection}.
+The distribution has the exponential form:
+
+\begin{equation}
+\label{mx:expdistr}
+P_{\Lambda}(c|s) = \frac{1}{Z(s)} \exp(\sum_{i}\lambda_i f_i(s,c))
+\end{equation}
+
+Where $\lambda_i$ is the parameter $i$ that is estimate from the training data for feature $i$, and $Z(s)$ is a normalizing constant to ensure proper probability. 
+
+\[
+Z(s) = \sum_c \exp(\sum_i \lambda_i f_i(s,c)
+\]
+
+Note that it is guaranteed that the likelihood surface is convex, having a single global maximum and no local maxima, which means that general optimization technique can be used for estimating parameters $\Lambda$.
+
+Maximum Entropy classifies sample s as follows:
+
+\[
+Class(s)  = \arg \max_{c \in C} P_{\Lambda}(c|s)
+\]
+
+\subsection{Improved Iterative Scaling}
+
+To find the distribution \ref{mx:expdistr} with the Maximum Entropy, we use the Improved Iterative Scaling (IIS) \cite{berger:gental} algorithm. The procedure is as follows:
+
+\begin{itemize}
+	\item \textbf{Inputs:} A collection $S$ of labeled samples and a set of feature functions $f_i$.
+	\item For every feature $f_i$, estimate its expected value on the traning samples.
+	\item Initialize all the parameters $\lambda_i$'s to be zero.
+	\item Iterate until convergence:
+	\begin{itemize}
+		\item Calculate the expected class labels for each sample with the current parameters, $P_{\Lambda}(c|s)$
+		\item For each parameter $\lambda_i$:
+		\begin{itemize}
+			\item Set $\frac{\partial B}{\partial \delta_i}  = 0$ and solve for $\delta_i$
+			\item Set $\lambda_i = \lambda_i + \delta_i$
+		\end{itemize}
+	\end{itemize}
+	\item \textbf{Output:} A classifier that takes a unlabeled sample and predicts a class label.
+\end{itemize}
+
+\begin{equation}
+\label{iis:derivative}
+\frac{\partial B}{\partial \delta_i} = \sum_{s \in S} (f_i (s|c(s)) - \sum_c P_{\Lambda}(c|s) f_i(s|c) \exp(\delta_i f^{\#}(s|c)))
+\end{equation}
+
+Where $f^{\#}(s|c) = \sum_i f_i (s|c)$, in case binary feature this function has the simple interpretation of number of features that are active for a document.
+
+Equation \ref{iis:derivative} can be solved with a numeric root-finding procedure, such as Newton’s method. If $f^{\#}(s|c) = M$ is constant for all s and c, \ref{iis:derivative} can be solved in closed form:
+
+\begin{equation}
+\label{iis:delta}
+\delta_i  = \frac{1}{M} \log \frac{\sum_{s \in S} f_i (s|c(s))}{\sum_{s \in S}\sum_{c} P_{\Lambda}(c|s) f_i(s|c) }
+\end{equation}
+
+Equation \ref{iis:derivative} is derived from the logliklihood $l(\Lambda|S)$ for the distribution $P_{\Lambda}$. Logliklihood is also used to evaluate the progress of the model at each iteration. It has the following form:
+
+\[
+l(\Lambda|S) = \log \prod_{s \in S} P_{\Lambda}(c(s)|d) = \sum_{s \in S} \sum_{i} \lambda_i f_i(s, c(s)) - \sum_{s \in S} \log \sum_{c} exp \sum_{i} \lambda_i f_i(d,c)
+\]
+
+\subsection{Text Classification}
+
+To apply Maximum Entropy to a text classification, we need to select a set of words for features. Then for every feature-class combination we instantiate a feature function:
+
+\[
+f_{w,c'}(s,c) =  \left\{ 
+  \begin{array}{l l}
+    0 & \quad \text{,if c' = c}\\
+    \frac{tf_{s,w}}{|s|} & \quad \text{,otherwise}\\
+  \end{array} \right.
+\]
+
+where$ tf_{s,w}$ is the number of times term $w$ occurs in document $s$, and $|s|$ is the total number of terms in $s$.
+One big advantage of this representation is that we perform IIS iteration is closed from, which is computationally very efficient.
+
+\subsection{References}
+
+For more details about Maximum entropy and Improved Iterative Scaling can be found in\cite{berger_a1-etal:1996a}, \cite{berger:gental}, \cite{manning99} and \cite{oai:CiteSeerPSU:93050}. More details on Maximum entropy applied to text classification can be found in Nigam et al. \cite{oai:CiteSeerPSU:93050}.
+
+\section{Naive Bayesian}
+
+Naive Bayesian classifier is based on the Bayes's Rule, which states that:
+
+\[
+P(C|S) = \frac{P (S|C) P (C)}{P(S)} = \frac{P (S|C) P (C)}{\sum_{c \in C} P(D|C=c)P(C=c)}
+\]
+
+Bayes's Rule is important because it allows us to write a conditional probability, such as $P(C|S)$ in terms of the "reverse" conditional 
+$P(S|C)$.
+
+Naive Bayesian classifies sample s as follows:
+
+\[
+Class(s)  = \arg \max_{c \in C} P(c|s) = \arg \max \frac{P(s|c)P(c)}{\sum_{c \in C} P(s|c)P(c)}
+\]
+
+Estimating class prior $P(c)$ is straightforward:
+
+\[
+P(c) = \frac{N_c}{N}
+\]
+
+where $N_c$ is the number of samples that have class c, and N is the total number of samples.
+
+To estimate $P(s|c)$ we represent the sample $s$ as set of features $f_i$, and impose the simplifying assumption that $f_i$ is independent from $f_j$  for every $i \neq j$. That means that $P(s|c)$ can be written as:
+
+\[
+P(s|c) = \prod_{i=1}^n P(f_i|c)
+\]
+
+Note that, feature selection is discussed in section  $\ref{featureselection}$
+
+\subsection{Text Classification}
+
+To apply Naive Bayes to a text classification, we need to select a set of words for features. Then for every feature-class combination estimate the probability of $P(s|c)$ from training data.
+
+For our classifier we use Multinominal event space representation in which opposite to multiple-Bernoulli event space representation features are not binary. Thus $P(s|c)$ is estimated as follows:
+
+\[
+P(s|c) = \frac{tf_{w,c}}{|c|}
+\]
+
+where $tf_{w,c}$ is the number of times term$w$ occurs in class $c$ in the training set, and $|c|$ is the total number of terms that occur in training set with class $c$
+
+Given the Multinominal distribution the likelihood of document $s$ given class $c$ is computer according to:
+
+\[
+P(s|c) = \prod_{w} P(w|c)^{tf_{w,s}}
+\]
+
+where $tf_{w,d}$ is the number of times that term $w$ occurs in document $s$.
+
+\subsection{References}
+
+Accessible introduction on Naive Bayes and text classification can be found in Croft, Metzler and Strohman \cite{Croft:2010:SEI}. More detailed description with experimental results can be found in Rennie, Shih, Teevan and Karger \cite{Rennie03}.
+
+\section{Information Gain}
+\label{featureselection}
+
+For text classification, it is common to have one or more features for every word in vocabulary. Thus, depending on the problem , feature set can be very large. Since feature set size affects both efficiency and effectiveness of the classifier, we want to selection a sub set of feature such feature that efficiency is significantly improved. Usually not only the efficiency is improved but also effectiveness because some features are noisy or inaccurate. The process of selection most useful features is called \textit{feature selection}.
+
+Information gain is one of the most widely used feature selection criterion for text classification applications. Information gains measures how much information about the class is gained when we observer the value of some feature. For example the feature "cheap" more information about the class spam then the feature "the". 
+
+Information gain measures how the entropy of $P(c)$ changes after we observe feature $f$. Thus we compute information gain for $f$ as follows:
+
+\[
+IG(w) = H(C) - H(C|w) = - \sum_{c \in C} P(c) \log P(c) + \sum_{w \in {0,1}} P(w) \sum_{c \in C} P(c|w) log P(c|w)
+\]
+
+\subsection{References}
+
+Accessible introduction on Information gain can be found in Croft, Metzler and Strohman \cite{Croft:2010:SEI}. Comparison to other feature selection criterion is done by  Yang and Pedersen  \cite{yang97}
+
+\chapter{Parallelization}
+
+\section{Menthor framework}
+
+Menthor is a framework for parallel graph processing, tut it is not limited to only to graphs. It is inspired by BSP with functional reduction/aggregation mechanisms.The  framework aims to ease parallizing machine learning functionality and it is is implemented in Scala programming language with Actor model.
+
+In Menthor all data to be processed is represented as a data graph. Vertices in such a graph typically represent atomic data items, while edges represent relationships between these atoms. In addition to the data item that it represents, a vertex stores a
+single value that is iteratively updated during processing - thus, an algorithm is implemented by defining how the value of each vertex changes over time. At each step the algorithm a vertex can exchange and receive messages from other vertecies. Thus, the update of a vertex’s value is based on its current value, its list of incoming messages, as well as its local state. During the execution of an iteration each update step on different verticies is executed in parallel.
+
+For example, page rank algorithm can be implemented as follows:
+
+\begin{lstlisting}[language=scala]
+class PageRankVertex extends Vertex[Double](0.0d) {
+  def update() = {
+    var sum = incoming.foldLeft(0)(_ + _.value)
+    value = (0.15 / numVertices) + 0.85 * sum
+    if (superstep < 30) {
+      for (nb <- neighbors) yield Message(this, nb, value / neighbors.size)
+    } else
+      List()
+  }
+}
+  \caption{Page rank algorithm}
+  \label{listing:pagerank}
+\end{lstlisting}
+
+\subsection{References}
+
+More information about Menthor can be found in the original paper by Philipp Haller and Heather Miller \cite{oai:infoscience.epfl.ch:165111}, and in the presentation "The Many Flavors of Parallel Programming in Scala" by Philipp Haller \cite{scalaparallel}
+
+\section{Strategy 1: Vertex for every sample}
+
+The data is partitioned into $n$ groups, and then a samples from every group are added as verticies in the graph, additionally, for every group there is an master vertex that is used to aggregate the results generated from samples in the group, masters are connected in order to be able to exchange messages. See figure \ref{fig:vs:graph1}.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics*[scale=0.40]{graph1.eps}
+  \caption{Vertex for every sample graph}
+  \label{fig:vs:graph1}
+\end{figure}
+
+With this strategy in order to compute some global function over all samples, sample verticies will send $|S|$ messages to masters, and then $n$  master exchange messages between then, so every master will have the result of the global function. Thus per one iteration $|S| + n(n-1)$ messages are necessary.
+
+The communication overhead of this strategy is significant especially if vertecies have to exchange messages with a lot of data. Also, if the data is partitioned in large number of groups the number of exchanged messages grows fast because of the term $n(n-1)$.
+
+\subsection{Maximum Entropy}
+
+\subsection{Naive Bayes}
+
+\section{Strategy 2: Vertex for set of samples}
+
+The data is partitioned $n$ groups, but unlike vertex for every sample strategy, only $n$ master vertecies are created and added to the graph, each vertex contains the set of samples for the given group. See figure \ref{fig:vss:graph2}.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics*[scale=0.40]{graph2.eps}
+  \caption{Vertex for set of samples}
+  \label{fig:vss:graph2}
+\end{figure}
+
+The data on every vertex is processed in parallel, and the advantage of this strategy is that only $n(n-1)$ messages are needed in order to compute a global function over this graph. Thus for big $|S|$ and small $n$ this strategy has much less communication overhead compared to vertex for every sample. Also, the strategy uses less memory because we do not create sample verticies .
+
+\subsection{Maximum Entropy}
+
+\subsection{Naive Bayes}
 
 \chapter{Implementation}
 
@@ -57,7 +332,7 @@ First, all training data is loaded and feature selection is performed, after the
   \caption{Features file extract}
 \end{figure}
 
-\chapter{Results}
+\chapter{Experimental results}
 
 \chapter{How to extend and reusability}
 
