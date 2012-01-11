@@ -87,8 +87,8 @@ object NewsgroupsClassifier extends TicToc {
     val trainer = algorithm match {
       case "maxent" =>
         traningMode match {
-          case "parallel" => new MaxentTrainerParallel[Category, Document](50, features) with ConsoleLogger
-          case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](50, features) with ConsoleLogger
+          case "parallel" => new MaxentTrainerParallel[Category, Document](50, features, 20) with ConsoleLogger
+          case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](50, features, 20) with ConsoleLogger
           case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
           case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
         }

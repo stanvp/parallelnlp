@@ -49,7 +49,7 @@ object MovieReviewClassifier {
 	val testSize = (collection.size * 0.1).toInt
 	val test = collection.slice(0, testSize - 1)
 	
-	val train = collection.slice(testSize, collection.size - 1)
+	val train = collection //.slice(testSize, collection.size - 1)
 		
 	val samples = train.view.flatMap(d => 
 	  d.categories.map(c => (c, d)) 

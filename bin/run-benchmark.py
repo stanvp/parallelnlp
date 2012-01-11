@@ -39,5 +39,7 @@ for numCores in [2,3,5,7,9]:
     iterations = 5
     
     cmd = "time "+ javaPath + " " + opts + " -cp parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.WikipediaClassifier %s %s %s %s %s %s %s %s" % (algorithm, trainingmode, corpusPath, testCorpusPath, featuresCorpusPath, evaluation, out, iterations)
-        
+    os.system(cmd)    
+    
 	print 'running command: %s' % cmd
+

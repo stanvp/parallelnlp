@@ -52,7 +52,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
     for ((group, i) <- samples.grouped(Math.ceil(samples.size.toDouble / partitions).toInt).zipWithIndex) {
       for ((c, sample) <- group) {
-        val vertex = new SampleVertex(sample.toString, c, sample, classifier, i, masters)
+        val vertex = new SampleVertex(sample.toString, c, sample, i, masters(i))
         graph.addVertex(vertex)
         vertex.connectTo(masters(i))
         masters(i).connectTo(vertex)
@@ -101,6 +101,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         }
         List()
       } then {
+        // sample step
+        List()
+      } then {
         val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
         value.likelihoodsum = 0.0
@@ -139,18 +142,15 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
         lastLoglikelihood = loglikelihood
 
-        for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
-      } then {
-        // sample step
         List()
       }
     }
   }
 
-  class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]])
+  class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S, group: Int, var master: MasterVertex[C, S])
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
-    val model = classifier.model
+    val model = master.classifier.model
     val encoding = model.encode(sample)
 
     var logEmpiricalFeatureFreqDistr: SparseVector[Double] = _
@@ -167,14 +167,17 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
             value.empiricalFeatureFreqDistr(index) = v
           }
 
-          for (neighbor <- masters) yield Message(this, neighbor, this.value)
+          List(Message(this, master, this.value))
         } else {
           List()
         }
       } then {
+        // master step
+        List()
+      } then {
         estimatedFeatureFreqDistr(0 to estimatedFeatureFreqDistr.size - 1) := 0.0
 
-        val dist = classifier.probClassify(encoding)
+        val dist = master.classifier.probClassify(encoding)
 
         for ((distcls, prob) <- dist) {
           val classOffset = model.classOffset(distcls)
@@ -191,15 +194,12 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
         value.estimatedFeatureFreqDistr = estimatedFeatureFreqDistr
 
-        for (neighbor <- neighbors) yield Message(this, neighbor, this.value)
+        List(Message(this, master, this.value))
       } then {
         // master step
         List()
       } then {
         // master step
-        List()
-      } then {
-        classifier.model.parameters(0 to classifier.model.parameters.size - 1) := incoming.first.value.parameters
         List()
       }
     }
