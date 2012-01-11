@@ -131,18 +131,18 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
 
           loglikelihood = Math.log(likelihoodsum / samplesSize)
 
-          if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
-            log("Cutoff at iteration " + (iteration - 1))
-            cutoff = true
-            List()
-          } else {
+//          if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+//            log("Cutoff at iteration " + (iteration - 1))
+//            cutoff = true
+//            List()
+//          } else {
             val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
             value.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
             lastLoglikelihood = loglikelihood
 
             for (neighbor <- graph.vertices) yield Message(this, neighbor, this.value)
-          }
+//          }
         } else {
           List()
         }
