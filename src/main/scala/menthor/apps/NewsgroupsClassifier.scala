@@ -116,8 +116,10 @@ object NewsgroupsClassifier extends TicToc {
       }
     }
 
-    writeTimesLog(benchmarkResultFile)
-
+    if (benchmarkIterations > 0) {
+    	writeTimesLog(benchmarkResultFile)
+    }
+    
     if (evaluation == true) {
 
       println("Evaluation")

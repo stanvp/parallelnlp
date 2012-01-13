@@ -300,7 +300,7 @@ The data is partitioned into $p$ partitions, and then a samples from every group
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics*[scale=0.40]{graph1.eps}
+  \includegraphics*[scale=0.45]{graph1.eps}
   \caption{Vertex for every sample graph}
   \label{fig:vs:graph1}
 \end{figure}
@@ -315,7 +315,7 @@ The data is partitioned $p$ groups, but unlike vertex for every sample strategy,
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics*[scale=0.40]{graph2.eps}
+  \includegraphics*[scale=0.45]{graph2.eps}
   \caption{Vertex for set of samples}
   \label{fig:vss:graph2}
 \end{figure}
@@ -324,12 +324,105 @@ The data on every vertex is processed in parallel, and the advantage of this str
 
 \chapter{Implementation}
 
+\section{Technologies}
 
-\section{Training corpus compression}
+The project is entrily implemented in Scala pogramming language\footnote{www.scala-lang.org}, except for one method that is implemented in Java\footnote{www.java.com} in order to avoid JVM Double autoboxing which significantly impacts performance.
+
+The excellent Scalala \footnote{github.com/scalala/Scalala} numeric linear algebra library is used for numeric computation and sparse vectors support. The library also provides rich Matlab-like operators on vector and matrices, as well as on scala standard data structures like Lists, Sets, Arrays and Maps.
+ 
+We are, also, using Trove\footnote{trove.starlight-systems.com} high performance collection library for Java, which is very easy to use from Scala thanks to its seamless intergration with Java. We do that because when dealing with a lot of numeric data on JVM it is very imporant to minimize autoboxing because it impacts performance and boxed primitive type take much more memory.  Every time you write a double number to Java or Scala hash map it is automatically box to its Double object, Trove provides optmized collections that avoid this behaviour.
+
+We are using Sbt \footnote{https://github.com/harrah/xsbt} to manage project dependecies and organize build procesdure.
+
+\section{Organzation}
+
+\subsection{Package structure}
+
+\begin{itemize}
+
+\item menthor.apps - classes related to applying the algorithms to text classification, and classes for experimanting with different corpus
+\item menthor.classifier - abstract base classes and traits that define the general interfaces for classification algorithms
+\item menthor.classifier.featureselection - implementation of information gain feature selection algorithm
+\item menthor.classifier.maxent - implementation of Maximum Entropy classifier
+\item menthor.classifier.naivebayes - implementation of Naive Bayes classifier
+\item menthor.util - utility classes for working with collections, files and probability distributions
+\end{itemize}
+
+\subsection{Class hiereiacy}
+
+There are two main class haracies Classifier on figure \ref{fig:classes1} and Trainer on figure \ref{fig:classes2}.
+ 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics*[scale=0.45]{classes1.eps}
+  \caption{Classifier class heiracy}
+  \label{fig:classes1}
+\end{figure}
+
+As depicted on figure \ref{fig:classes1} there are two classes that inherit from Classifier abstract class: Maxent classifier and NaiveBayes classifier. Classes inherited from Classifier have to implement probClassifiy method that returns tha probability distribution for every class. Method classify from Classifer uses probClassify and returns tha class with highest probability.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics*[scale=0.45]{classes2.eps}
+  \caption{Trainer class heiracy}
+  \label{fig:classes2}
+\end{figure}
+
+There are six classes  implementing Trainer trait, three for Maximum Entropy and three for Naive Bayes. Classes without any suffix implement sequential version, these with suffix Parallel implement vertex for every sample strategy, and ParallelBatch implement vertex for set of samples strategy.
+
+\chapter{Experimental results}
+
+\section{Traing data sets}
+
+We are experimanting with three data sets: Movie Reviews\cite{Pang+Lee:04a}, 20 Newsgroups \footnote{people.csail.mit.edu/jrennie/20Newsgroups} and Wikipedia INEX 2009 collection \cite{conf/btw/SchenkelSK07}
+
+\subsection{Movie Reviews}
+
+Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negative. The task is to train a classifier which decides if unseen movie review is negative or positive. The data set is samll, and uninteresing for large scale machine learning but it was used at the begining on the development to test the correctness of the algorithms. The classification accuracy for this corpus is as follows: 
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ l c }
+    \hline\hline
+    Algorithm & Accuracy \\ [0.2ex]
+    \hline
+    Maximum Entropy &  86.33 \\ % 84.92462, 83.91959, 87.9397, 84.92462, 89.94472
+    Naive Bayes & 85.62 \\ % 86.43216, 89.447235, 81.407036, 86.43216, 84.42211
+    \hline
+  \end{tabular}
+\label{table:mrprecision}
+\caption{Moview reviews corpus classification accuracy}
+\end{table}
+
+At each separate run the data is split into training and test sets. The test set is 10\% of the the collection and training set is the rest. Test set is picked at random at every run, thus the accuracy from the table is calculate as avarage of 5 runs of the algorithms.
+
+We have empircally found out that the best accuracy is achived with 100 features, which means that Maximum Entropy model has 200 parameters.
+
+\subsection{20 Newsgroups}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ l c }
+    \hline\hline
+    Algorithm & Accuracy \\ [0.2ex]
+    \hline
+    Maximum Entropy &  57.44 \\
+    Naive Bayes & 92.12  \\
+    \hline
+  \end{tabular}
+\label{table:20nprecision}
+\caption{20 Newsgroups classification accuracy}
+\end{table}
+
+Unilike movie reiews with this corpus training and test sets are predifined as follows: 18846 training examples, and 7532 test examples.
+
+The accuracy of Maximum	  
+
+\subsection{Corpus Preprocessing}
 
 The training corpus that are used comes in plain text or xml formats. Parsing large number of files is time consuming and does not give information regarding the performance of the algorithm and only may obfuscate performance results, and because the algorithms are run many time against the same data minimizing the parsing time and I/O time is important. That is why training data is parsed and compressed in advanced.
 
-First, all training data is loaded and feature selection is performed, after the most useful features are decided each features is given a unique id, and the triple id, features, and information gain is written to a files, see listing \ref{featureextract}.
+First, all training data is loaded and feature selection is performed, after the most useful features are decided each features is given a unique id, and the triple id, features, and information gain is written to a files. For example see listing \ref{featureextract}.
 
 \begin{lstlisting}[language=scala, caption={Features file extract}, label={featureextract}]
 2507 | bad | -0.2579069473576291
@@ -340,7 +433,75 @@ First, all training data is loaded and feature selection is performed, after the
 .......
 \end{lstlisting}
 
-\chapter{Experimental results}
+Second, the training corpus compression is performed, only selected features are retained and the samples are written in single file with format: category $|$ sample name $|$ feature id : feature value. For example see  see listing \ref{preprocessed}.
+
+\begin{lstlisting}[language=scala, caption={Preprocessed samples}, label={preprocessed}]
+pos | cv889_21430.txt | 282:1.0 280:1.0 275:1.0 272:1.0 260:1.0 259:1.0 258:1.0 256:2.0
+pos | cv477_22479.txt | 99:2.0 195:1.0 273:1.0 455:1.0 391:1.0 380:2.0 376:2.0 178:1.0
+neg | cv314_16095.txt | 757:1.0 2163:2.0 3696:1.0 5738:2.0 7505:1.0 8286:1.0 3181:1.0
+neg | cv690_5425.txt | 367:4.0 1557:2.0 2102:4.0 2814:2.0 1586:2.0 23901:2.0 8:7.0
+.......
+\end{lstlisting}
+
+Having all data preprocessed significantly reduce I/O and allows for easy testing of only the algorithm part of the program.
+
+\section{Command line utilities}
+
+\section{Performance Benchmarks}
+
+\subsection{Maximum Entropy}
+
+20 newsgroups data set
+
+\begin{lstlisting}
+vertex for every set of sample
+#1      345037  341606  349299  349505
+#2     170817  172140  169636  169942
+#4      92106   92585   90680   91260
+#6      91136   92264   90977   92062
+#8      57713   58418   58288   58115
+\end{lstlisting}
+
+\begin{lstlisting}
+vertex for every sample
+Timings of class menthor.apps.NewsgroupsClassifier$
+description:    i_1     i_2
+times(ms):      5210112 5273792
+\end{lstlisting}
+
+\begin{lstlisting}
+Sequential
+#1:      58703   59923   60353   59961
+#8:      56108   57308   57571   56769
+\end{lstlisting}
+
+\subsection{Naive Bayes}
+
+\begin{lstlisting}
+vertex for every set of sample
+Timings of class menthor.apps.WikipediaClassifier$
+description:    i_1     i_2     i_3     i_4
+times(ms):      6863    8049    6859    7265
+times(ms):      3954    5365    4250    4357
+times(ms):      3007    4026    3051    2802
+times(ms):      3023    5103    3018    3845
+times(ms):      2696    3361    2665    4257
+\end{lstlisting}
+
+\begin{lstlisting}
+vertex for every sample
+Timings of class menthor.apps.WikipediaClassifier$
+description:    i_1     i_2     i_3     i_4
+times(ms):      64732   29869   48557   75609
+\end{lstlisting}
+
+\begin{lstlisting}
+Timings of class menthor.apps.WikipediaClassifier$
+description:    i_1     i_2     i_3     i_4
+times(ms):      6251    4452    4412    4984
+times(ms):      8220    4697    4545    4857
+\end{lstlisting}
+
 
 \chapter{How to extend and reusability}
 
