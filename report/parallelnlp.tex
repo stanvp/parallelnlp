@@ -248,9 +248,29 @@ Accessible introduction on Information gain can be found in Croft, Metzler and S
 
 \chapter{Parallelization}
 
+\section{Maximum Entropy}
+
+Mann, McDonald, Mohri, Silberman and Walker \cite{conf/nips/MannMMSW09} describe three main strategies for parallizing Maximum Entropy model training: Distributed Gradient Method, Majority Vote Method and Mixture Weight Method. We implemented Mixture Weight Method because of its computational efficiency and small comunication overhead.
+
+Using Mixture Weight Method the training data is split in  $p$ partitions $S_1, S_2, ..., S_p$, and training is performed separatly on every partition, on each iteration the parameter vector $\Lambda_i$ of process $i$ is exchanged with other training processes, then the paramters are mixed as follows:
+
+\[
+\Lambda_{\mu} = \sum_{k=1}^{p} \mu \Lambda_{k}
+\]
+
+The resulting verctor can be used directly for classification. We set $\mu$ to be $\frac{1}{p}$, where $p$ is number of processes. 
+
+A disadvantage of this method is that is the training set is small and $p$ is large each paramter vector $\Lambda_i$ is estimated on small training data which leads to bad models. But considering large scale machine learning this is not a problem.
+
+\section{Naive Bayes}
+
+Naive Bayes classifier training consists in estmating the probabilties $P(c)$ and $P(s|c)$ on the training set $S$. Who this probablities are estimated  is dependent on the application. In case of text classification we need: $N_c$ - number of samples that have class $c$; $tf_{w,c}$ - number of times term $w$ occurs in class $c$; and $|c|$ - total number of terms in class C.
+
+In order to parallize  Naive Bayes for text classification we split the training data in $p$ partitions $S_1, S_2, ..., S_p$, where $p$ is number of processes. Then we estimate ${N_c}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ on every partition $S_i$. Finaly we mix ${N_c}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ to obtain a trained model on $S$.
+
 \section{Menthor framework}
 
-Menthor is a framework for parallel graph processing, tut it is not limited to only to graphs. It is inspired by BSP with functional reduction/aggregation mechanisms.The  framework aims to ease parallizing machine learning functionality and it is is implemented in Scala programming language with Actor model.
+To parallize algorithms functionality we use Menthor. Menthor is a framework for parallel graph processing, but it is not limited to only to graphs. It is inspired by BSP with functional reduction/aggregation mechanisms.The  framework aims to ease parallizing machine learning functionality and it is is implemented in Scala programming language with Actor model.
 
 In Menthor all data to be processed is represented as a data graph. Vertices in such a graph typically represent atomic data items, while edges represent relationships between these atoms. In addition to the data item that it represents, a vertex stores a
 single value that is iteratively updated during processing - thus, an algorithm is implemented by defining how the value of each vertex changes over time. At each step the algorithm a vertex can exchange and receive messages from other vertecies. Thus, the update of a vertex’s value is based on its current value, its list of incoming messages, as well as its local state. During the execution of an iteration each update step on different verticies is executed in parallel.
@@ -270,13 +290,13 @@ class PageRankVertex extends Vertex[Double](0.0d) {
 }
 \end{lstlisting}
 
-\subsection{References}
-
 More information about Menthor can be found in the original paper by Philipp Haller and Heather Miller \cite{oai:infoscience.epfl.ch:165111}, and in the presentation "The Many Flavors of Parallel Programming in Scala" by Philipp Haller \cite{scalaparallel}
 
-\section{Strategy 1: Vertex for every sample}
+The next two section discuss two parallization strategies that we implemented on top of Menthor for Maximum Entropy and Naive Bayes training.
 
-The data is partitioned into $n$ groups, and then a samples from every group are added as verticies in the graph, additionally, for every group there is an master vertex that is used to aggregate the results generated from samples in the group, masters are connected in order to be able to exchange messages. See figure \ref{fig:vs:graph1}.
+\subsection{Strategy 1: Vertex for every sample}
+
+The data is partitioned into $p$ partitions, and then a samples from every group are added as verticies in the graph, additionally, for every group there is an master vertex that is used to aggregate the results generated from samples in the group, masters are connected in order to be able to exchange messages. See figure \ref{fig:vs:graph1}.
 
 \begin{figure}[!htb]
   \centering
@@ -285,17 +305,13 @@ The data is partitioned into $n$ groups, and then a samples from every group are
   \label{fig:vs:graph1}
 \end{figure}
 
-With this strategy in order to compute some global function over all samples, sample verticies will send $|S|$ messages to masters, and then $n$  master exchange messages between then, so every master will have the result of the global function. Thus per one iteration $|S| + n(n-1)$ messages are necessary.
+With this strategy in order to compute some global function over all samples, sample verticies will send $|S|$ messages to masters, and then $p$  master exchange messages between then, so every master will have the result of the global function. Thus per one iteration $|S| + p(p-1)$ messages are necessary.
 
-The communication overhead of this strategy is significant especially if vertecies have to exchange messages with a lot of data. Also, if the data is partitioned in large number of groups the number of exchanged messages grows fast because of the term $n(n-1)$.
+The communication overhead of this strategy is significant especially if vertecies have to exchange messages with a lot of data. Also, if the data is partitioned in large number of groups the number of exchanged messages grows fast because of the term $p(p-1)$.
 
-\subsection{Maximum Entropy}
+\subsection{Strategy 2: Vertex for set of samples}
 
-\subsection{Naive Bayes}
-
-\section{Strategy 2: Vertex for set of samples}
-
-The data is partitioned $n$ groups, but unlike vertex for every sample strategy, only $n$ master vertecies are created and added to the graph, each vertex contains the set of samples for the given group. See figure \ref{fig:vss:graph2}.
+The data is partitioned $p$ groups, but unlike vertex for every sample strategy, only $p$ master vertecies are created and added to the graph, each vertex contains the set of samples for the given group. See figure \ref{fig:vss:graph2}.
 
 \begin{figure}[!htb]
   \centering
@@ -304,31 +320,25 @@ The data is partitioned $n$ groups, but unlike vertex for every sample strategy,
   \label{fig:vss:graph2}
 \end{figure}
 
-The data on every vertex is processed in parallel, and the advantage of this strategy is that only $n(n-1)$ messages are needed in order to compute a global function over this graph. Thus for big $|S|$ and small $n$ this strategy has much less communication overhead compared to vertex for every sample. Also, the strategy uses less memory because we do not create sample verticies .
-
-\subsection{Maximum Entropy}
-
-\subsection{Naive Bayes}
+The data on every vertex is processed in parallel, and the advantage of this strategy is that only $p(p-1)$ messages are needed in order to compute a global function over this graph. Thus for big $|S|$ and small $p$ this strategy has much less communication overhead compared to vertex for every sample. Also, the strategy uses less memory because we do not create sample verticies .
 
 \chapter{Implementation}
+
 
 \section{Training corpus compression}
 
 The training corpus that are used comes in plain text or xml formats. Parsing large number of files is time consuming and does not give information regarding the performance of the algorithm and only may obfuscate performance results, and because the algorithms are run many time against the same data minimizing the parsing time and I/O time is important. That is why training data is parsed and compressed in advanced.
 
-First, all training data is loaded and feature selection is performed, after the most useful features are decided each features is given a unique id, and the triple id, features, and information gain is written to a files, see figure \ref{featureextract}.
+First, all training data is loaded and feature selection is performed, after the most useful features are decided each features is given a unique id, and the triple id, features, and information gain is written to a files, see listing \ref{featureextract}.
 
-\begin{figure}[h!]
- \label{featureextract}
-  \centering 
-2507 $|$ bad $|$ -0.2579069473576291 \\
-3081 $|$ worst $|$ -0.2638446978715786  \\
-1425 $|$ stupid $|$ -0.2752135575766913 \\
-8286 $|$ boring $|$ -0.27746205051618666 \\
-1110 $|$ waste $|$ -0.2813770454287048 \\
+\begin{lstlisting}[language=scala, caption={Features file extract}, label={featureextract}]
+2507 | bad | -0.2579069473576291
+3081 | worst | -0.2638446978715786
+1425 | stupid | -0.2752135575766913
+8286 | boring | -0.27746205051618666
+1110 | waste | -0.2813770454287048
 .......
-  \caption{Features file extract}
-\end{figure}
+\end{lstlisting}
 
 \chapter{Experimental results}
 
