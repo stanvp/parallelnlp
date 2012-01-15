@@ -370,6 +370,12 @@ As depicted on figure \ref{fig:classes1} there are two classes that inherit from
 
 There are six classes  implementing Trainer trait, three for Maximum Entropy and three for Naive Bayes. Classes without any suffix implement sequential version, these with suffix Parallel implement vertex for every sample strategy, and ParallelBatch implement vertex for set of samples strategy.
 
+\section{Extensions}
+
+New classifers should extend Classifier abstract class and Trainer trait, and implement their correpsonding abstract methods. Different feature selection algorithm can be implemented by extending FeatureSelector trait and implementing "select" method.
+
+In order to apply the algorithms for different taks, Sample trait have to be implmented and features for the given taks have to be represented as a map from int to double for the given sample.
+
 \chapter{Experimental results}
 
 \section{Traing data sets}
@@ -378,7 +384,7 @@ We are experimanting with three data sets: Movie Reviews\cite{Pang+Lee:04a}, 20 
 
 \subsection{Movie Reviews}
 
-Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negative. The task is to train a classifier which decides if unseen movie review is negative or positive. The data set is samll, and uninteresing for large scale machine learning but it was used at the begining on the development to test the correctness of the algorithms. The classification accuracy for this corpus is as follows: 
+Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negative. The task is to train a classifier which decides if unseen movie review is negative or positive. The data set is samll, and uninteresing for large scale machine learning but it was used at the begining on the development to test the correctness of the algorithms. The classification accuracy for this corpus is given in table \ref{table:mrprecision}. 
 
 \begin{table}[ht]
 \centering
@@ -400,6 +406,10 @@ We have empircally found out that the best accuracy is achived with 100 features
 
 \subsection{20 Newsgroups}
 
+The data set consists of 25000 messages taken from 20 newsgroups, categorized into 20 categories: alt.atheism, comp.graphics, comp.os.ms-windows.misc,     comp.sys.ibm.pc.hardware, comp.sys.mac.hardware, comp.windows.x, misc.forsale,  rec.autos, rec.motorcycles, rec.sport.baseball, rec.sport.hockey, sci.crypt, sci.electronics,     sci.med, sci.space, soc.religion.christian, talk.politics.guns, talk.politics.mideast,     talk.politics.misc, talk.religion.misc.
+
+Unilike movie reiews with this corpus training and test sets are predifined as follows: 18846 training examples, and 7532 test examples. The classification accuracy for this corpus is given in table \ref{table:20nprecision}. 
+
 \begin{table}[ht]
 \centering
 \begin{tabular}{ l c }
@@ -414,13 +424,21 @@ We have empircally found out that the best accuracy is achived with 100 features
 \caption{20 Newsgroups classification accuracy}
 \end{table}
 
-Unilike movie reiews with this corpus training and test sets are predifined as follows: 18846 training examples, and 7532 test examples.
+The accuracy of Maximum Entropy is worse than Naive Bayes, to ensure that our implementation of Maximum Entropy is correct we compared the results with the results from Apache OpenNLP\footnote{incubator.apache.org/opennlp} Maxent package. OpenNLP categorized accuracy with default settings is 52.60\% which is even worse then our implementation.
 
-The accuracy of Maximum	  
+Because of the large number of classes for this taks the classification is performed on a set of 5000 features, thus Maximum Entropy model has 20000 parameters.
 
-\subsection{Corpus Preprocessing}
+\subsection{Wikipedia INEX 2009 collection}
 
-The training corpus that are used comes in plain text or xml formats. Parsing large number of files is time consuming and does not give information regarding the performance of the algorithm and only may obfuscate performance results, and because the algorithms are run many time against the same data minimizing the parsing time and I/O time is important. That is why training data is parsed and compressed in advanced.
+This data set was prepared for evaluating information retrieval tasks but we adopted it to text classification because the wikitext is conviniently cleansed  and parsed to XML which is standard and easy to use. It consist of 2,666,190 articles from Wikipeida. In our experiment we use a subsets of 40,000 articles.
+
+One of the issues with using wikipedia articles for text classification is that categories are not well defined and sparse, such as: "Person who imigrated to Canda" or "Persons who won the noble price", we would like to have both articles in "person" category. To achive that we use the 331 classes defined in Dbpeida\footnote{http://dbpedia.org/About} ontology, and try to do a keyword matching on article category to dbpedia class in order to determine to which class the aricle belongs.
+
+We use a subset of 10000 features for this data sets. We did not test for accuracy on this data set but only used it for peformance benchmakrs.
+
+\section{Training data set preprocessing}
+
+The training data sets that are used comes in plain text or xml formats. Parsing large number of files is time consuming and does not give information regarding the performance of the algorithm and only may obfuscate performance results, and because the algorithms are run many time against the same data minimizing the parsing time and I/O time is important. That is why training data is parsed and compressed in advanced.
 
 First, all training data is loaded and feature selection is performed, after the most useful features are decided each features is given a unique id, and the triple id, features, and information gain is written to a files. For example see listing \ref{featureextract}.
 
@@ -447,63 +465,151 @@ Having all data preprocessed significantly reduce I/O and allows for easy testin
 
 \section{Command line utilities}
 
+The project has the following commandline utilities for working with data sets:
+
+\begin{itemize}
+
+\item Given data set this command line taks selects features and creates preporcessed training file. The [data set] parameter can be moviereviews, newsgroups or wikipedia. 
+\begin{lstlisting}
+parallelnlp menthor.apps.BuildCorpus [data set] [features size] [data set path] [output training file] [output feature file]
+\end{lstlisting}
+
+\item Performs classification on movie reviews data set. [algorithm] paramter: can be maxent or naivebayes; and [training mode]: sequential, parallel, parallelbatch.
+\begin{lstlisting}
+parallelnlp menthor.apps.MovieReviewClassifier [algorithm] [traning mode] [movie reviews training file] [features file]
+\end{lstlisting}
+
+\item Performs classification on 20 Newsgroups data set. [algorithm] paramter: can be maxent or naivebayes;  [training mode]: sequential, parallel, parallelbatch; and [evaluation] can be true or false. Turning off evaluation is useful for benchmarking when you what to only know the performance of the parallel part.
+\begin{lstlisting}
+parallelnlp menthor.apps.NewsgroupsClassifier [algorithm] [traning mode] [newsgroups training file] [newsgroups test path] [features file] [evaluation] [benchmark output file] [benchmark iterations]
+\end{lstlisting}
+
+\item The same options as for 20 Newsgroups, but works on wikipedia corpus.
+\begin{lstlisting}
+parallelnlp menthor.apps.WikiepdiaClassifier [algorithm] [traning mode] [newsgroups training path] [newsgroups test path] [features file] [evaluation] [benchmark output file] [benchmark iterations]
+\end{lstlisting}
+
+\end{itemize}
+
 \section{Performance Benchmarks}
+
+Algorithms are tests with 1,2,4,6,8 cores, for each core we perform 5 iterations but we do not take into account the first one because JVM JIT compiler still did not optimize the code and it usually has lower performance.
 
 \subsection{Maximum Entropy}
 
-20 newsgroups data set
+\begin{itemize}
 
-\begin{lstlisting}
-vertex for every set of sample
-#1      345037  341606  349299  349505
-#2     170817  172140  169636  169942
-#4      92106   92585   90680   91260
-#6      91136   92264   90977   92062
-#8      57713   58418   58288   58115
-\end{lstlisting}
+\item{Vertex for a set of sample}
 
-\begin{lstlisting}
-vertex for every sample
-Timings of class menthor.apps.NewsgroupsClassifier$
-description:    i_1     i_2
-times(ms):      5210112 5273792
-\end{lstlisting}
+\begin{table}[ht]
+\centering
+\begin{tabular}{ l c }
+    \hline\hline
+    Cores & Avarage Time \\ [0.2ex]
+    \hline
+    1 & 346361.75 \\
+    2 & 185633.75  \\
+    4 &111657.75  \\
+    6 & 73359.75  \\
+    8 & 46883.5  \\
+    \hline
+  \end{tabular}
+\label{table:maxentres1}
+\caption{Maximum Entropy results}
+\end{table}
 
-\begin{lstlisting}
-Sequential
-#1:      58703   59923   60353   59961
-#8:      56108   57308   57571   56769
-\end{lstlisting}
+\begin{figure}[!htb]
+  \centering
+  \includegraphics*[scale=0.70]{maxent_plot.png}
+  \caption{Maximum Entropy plot}
+  \label{fig:maxent_plot}
+\end{figure}
+
+There is an avarage improvment of 1.65x times for every 2 cores. The biggest improvemnt is between 1 and 2 cores - 1.86x times. The overall improvement between 1 and 8 cores is 7.38x times.
+
+\item{Vertex for every sample}
+
+The avarage time for this strategy on 8 cores is 5241952 ms which around 111x times worse then the time for vertex for set of samples stragey. This results should that acually vertex for every sample can be infeasible for some tasks, especially when the data is not naturally a graph and can be processed in other manner.
+
+\item{Sequential}
+
+\begin{table}[!htb]
+\centering
+\begin{tabular}{ l c }
+    \hline\hline
+    Cores & Avarage Time \\ [0.2ex]
+    \hline
+    1 &  67235 \\
+    8 & 67140.75  \\
+    \hline
+  \end{tabular}
+\label{table:maxentres2}
+\caption{Maximum Entropy results}
+\end{table}
+
+As expected there is no improvement in the running time between 1 and 8 cores for the sequential version.  The comparision with 8 cores of parallel version shows that parallel version is only 1.40x times then the sequentail version, which means that due to parallization overhead the parallized algorithms should be applied only on large datasets, and on machines with many processors in order for communication overhead to be paid off.
+
+\end{itemize}
 
 \subsection{Naive Bayes}
 
-\begin{lstlisting}
-vertex for every set of sample
-Timings of class menthor.apps.WikipediaClassifier$
-description:    i_1     i_2     i_3     i_4
-times(ms):      6863    8049    6859    7265
-times(ms):      3954    5365    4250    4357
-times(ms):      3007    4026    3051    2802
-times(ms):      3023    5103    3018    3845
-times(ms):      2696    3361    2665    4257
-\end{lstlisting}
+\begin{itemize}
 
-\begin{lstlisting}
-vertex for every sample
-Timings of class menthor.apps.WikipediaClassifier$
-description:    i_1     i_2     i_3     i_4
-times(ms):      64732   29869   48557   75609
-\end{lstlisting}
+\item{Vertex for a set of sample}
 
-\begin{lstlisting}
-Timings of class menthor.apps.WikipediaClassifier$
-description:    i_1     i_2     i_3     i_4
-times(ms):      6251    4452    4412    4984
-times(ms):      8220    4697    4545    4857
-\end{lstlisting}
+\begin{table}[ht]
+\centering
+\begin{tabular}{ l c }
+    \hline\hline
+    Cores & Avarage Time \\ [0.2ex]
+    \hline
+    1 & 8509 \\
+    2 & 4731.5  \\
+    4 & 3071.5  \\
+    6 & 2247.25  \\
+    8 & 1619.75  \\
+    \hline
+  \end{tabular}
+\label{table:naiveres1}
+\caption{Naive Bayes results}
+\end{table}
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics*[scale=0.70]{naivebayes_plot.png}
+  \caption{Naive Bayes plot}
+  \label{fig:naive_plot}
+\end{figure}
 
-\chapter{How to extend and reusability}
+There is an avarage improvment of 1.52x times for every 2 cores. The biggest improvemnt is ,again, between 1 and 2 cores - 1.79x times. The overall improvement between 1 and 8 cores is 5.25x times. The overall improvment is smaller compared to Maximum Entropy because Naive Bayes is computationally much less expensive.
+
+\item{Vertex for every sample}
+
+The avarage time for this strategy on 8 cores is 62300.5 ms which around 38x times worse then the time for vertex for set of samples stragey.
+
+\item Sequential
+
+\begin{table}[!htb]
+\centering
+\begin{tabular}{ l c }
+    \hline\hline
+    Cores & Avarage Time \\ [0.2ex]
+    \hline
+    1 & 5224.75 \\
+    8 & 5579.75  \\
+    \hline
+  \end{tabular}
+\label{table:naivebayes2}
+\caption{Naive Bayes results}
+\end{table}
+
+As expected there is no improvement in the running time between 1 and 8 cores for the sequential version.  The comparision with 8 cores of parallel version shows that parallel version is only 3.10x times then the sequentail version, which is better than the improvement with Maximum Entropy.
+
+\end{itemize}
+
+\chapter{Conclusions and Feature work}
+
+It will be interesting to implement other popular machine learning algorithms like SVM and Neural Networks. Also, due to Menthor distribued computatation features the algorithms can be run transperantly on clusters of computers, the results from  such experiments would give us data how communication overhead in a network of computers affects the performance, and data sets of what size are appropriate for distribued computation.
 
 \bibliography{references}{}
 \bibliographystyle{plain}
