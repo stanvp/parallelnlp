@@ -208,7 +208,7 @@ To apply Naive Bayes to a text categorization, we need to select a set of words 
 For our classifier we use Multinominal event space representation in which opposite to multiple-Bernoulli event space representation features are not binary\cite{Croft:2010:SEI}. Thus $P(s|c)$ is estimated as follows:
 
 \[
-P(s|c) = \frac{tf_{w,c}}{|c|}
+P(w|c) = \frac{tf_{w,c}}{|c|}
 \]
 
 where $tf_{w,c}$ is the number of times term $w$ occurs in class $c$ in the training set, and $|c|$ is the total number of terms that occur in training set with class $c$
@@ -393,7 +393,7 @@ Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negati
     \hline
   \end{tabular}
 \label{table:mrprecision}
-\caption{Moview Reviews corpus classification accuracy}
+\caption{Moview Reviews data set classification accuracy}
 \end{table}
 
 At each separate run the data is split into training and test sets. The test set is 10\% of the the collection and training set is the rest. The test set is determined at random for each run, thus the accuracy from the table is calculate as average of 5 runs of the algorithms.

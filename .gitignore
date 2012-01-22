@@ -12,3 +12,6 @@ report/*.log
 report/*.pdf
 report/*.synctex.gz
 report/*.toc
+report/*.nav
+report/*.out
+report/*.snm
