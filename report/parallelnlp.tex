@@ -7,7 +7,7 @@
 \usepackage{cite}
 \usepackage{listings}
 \usepackage{epstopdf}
-\author{Stanislav Peshterliev}
+\author{Stanislav Peshterliev \\ \\ EPFL}
 \title{Parallel Natural Language Processing Algorithms in Scala}
 
 % "define" Scala
@@ -54,11 +54,11 @@ Implementing machine learning algorithms for Natural Language Processing (NLP) o
 
 The aim of this semester project is to implement and benchmark two strategies for parallelizing Maximum Entropy\cite{berger_a1-etal:1996a} and Naive Bayesian\cite{Rennie03} - two widely used machine learning classification algorithms.  The project focus is on scalability of the parallel implementation rather then on classification accuracy. We use text categorization as classification task because it is relatively easy to find a large data sets to experiment, and  because this is one of the most widely spread and useful Natural Language Processing application, i.e. spam classification.
 
-The parallelization is based on Menthor\cite{oai:infoscience.epfl.ch:165111} - a framework for implementing parallel and distributed machine learning algorithms on large graphs developed at EPFL. In terms of Menthor framework architecture, we consider two parallelization strategies: vertex for every sample, and vertex for set of sample; both strategies are analyzed in terms of computational efficiency and scalability, as well as compared to baseline sequential version.
+The parallelization is based on Menthor\cite{oai:infoscience.epfl.ch:165111} - a framework for implementing parallel and distributed machine learning algorithms on large graphs developed at EPFL. In terms of Menthor framework architecture, we consider two parallelization strategies: vertex for every sample, and vertex for set of sample; both strategies are analyzed in terms of computational efficiency and scalability, as well as compared to their baseline sequential version.
 
 \section{Related work}
 
-The recent research on parallel machine learning algorithms is focused mainly on implementation based on MapReduce\cite{Dean:2008:MSD:1327452.1327492} framework, which was proposed by Google. Cheng-Tao Chu et al. have reported a linear improvement in the speed to the number of processes \cite{conf/nips/ChuKLYBNO06} with using map reduce approach. Apache Mahout\footnote{mahout.apache.org} is an open source project which aim to provide parallel version of the most popular machine learning algorithm. Again. Mahout is using map reduce approach with the open source framework Apache Hadoop\footnote{hadoop.apache.org}
+The recent research on parallel machine learning algorithms is focused mainly on implementation based on MapReduce\cite{Dean:2008:MSD:1327452.1327492} framework, which was proposed by Google. Cheng-Tao Chu et al. have reported a linear improvement in the speed to the number of processes \cite{conf/nips/ChuKLYBNO06} with using map reduce approach. Apache Mahout\footnote{mahout.apache.org} is an open source project which aim to provide parallel version of the most popular machine learning algorithm. Again, Mahout is using map reduce approach with the open source framework Apache Hadoop\footnote{hadoop.apache.org}
 
 \section{Overview}
 
@@ -74,7 +74,7 @@ The report is structured as follows:
 
 \chapter{Classification Algorithms}
 
-In the field of machine learning classification algorithms fall into the class of supervised learning method. They work by learning from some known set of labled training samples. The task is to derive a model that  given an unlabled sample determines the class it belongs.
+In the field of machine learning classification algorithms fall into the class of supervised learning method. They work by learning from some known set of labeled training samples. The task is to derive a model that  given an unlabeled sample determines the class it belongs.
 
 To give context for further discussions, we consider the text categorization problem where samples are documents and classes are categories. The training set for this problem consist of a collection of categorized documents. Classifier have to predict the most likely category of not categorized document. An important step in designing a classifier is deciding which words to take into consideration for the model because there are common words which occur in all classes and using them only obscures the results of classification, for example in English such words are "a", "an", "the". The set of words that we use to represent a document for classification is called feature set, and each word is called feature. In the following section, we will discuss a strategy for automatically determining the most useful feature from training data.
 
@@ -115,7 +115,7 @@ To find the distribution \ref{mx:expdistr} with the Maximum Entropy, we use the 
 
 \begin{itemize}
 	\item \textbf{Inputs:} A collection $S$ of labeled samples and a set of feature functions $f_i$.
-	\item For every feature $f_i$, estimate its expected value on the traning samples.
+	\item For every feature $f_i$, estimate its expected value on the training samples.
 	\item Initialize all the parameters $\lambda_i$'s to be zero.
 	\item Iterate until convergence:
 	\begin{itemize}
@@ -143,7 +143,7 @@ Equation \ref{iis:derivative} can be solved with a numeric root-finding procedur
 \delta_i  = \frac{1}{M} \log \frac{\sum_{s \in S} f_i (s|c(s))}{\sum_{s \in S}\sum_{c} P_{\Lambda}(c|s) f_i(s|c) }
 \end{equation}
 
-Equation \ref{iis:derivative} is derived from the logliklihood $l(\Lambda|S)$ for the distribution $P_{\Lambda}$. The logliklihood is, also, used to evaluate the progress of the training at every iteration. It has the following form:
+Equation \ref{iis:derivative} is derived from the loglikelihood $l(\Lambda|S)$ for the distribution $P_{\Lambda}$. The loglikelihood is, also, used to evaluate the progress of the training at every iteration. It has the following form:
 
 \[
 l(\Lambda|S) = \log \prod_{s \in S} P_{\Lambda}(c(s)|d) = \sum_{s \in S} \sum_{i} \lambda_i f_i(s, c(s)) - \sum_{s \in S} \log \sum_{c} exp \sum_{i} \lambda_i f_i(d,c)
@@ -260,13 +260,13 @@ One disadvantage of this method is that if the training set is small and $p$ is 
 
 \section{Naive Bayes}
 
-Naive Bayes classifier training consists in estimating the probabilities $P(c)$ and $P(s|c)$ on the training set $S$. How these probabilities are estimated  is dependent on the specific application. In case of text categorization we need: $N_c$ - number of samples that have class $c$; $tf_{w,c}$ - number of times term $w$ occurs in class $c$; and $|c|$ - total number of terms in class $C$.
+Naive Bayes classifier training consists in estimating the probabilities $P(c)$ and $P(s|c)$ on the training set $S$. How these probabilities are estimated  is dependent on the specific application. In case of text categorization we need: $N_c$ - number of samples that have class $c$; $tf_{w,s}$ - number of times term $w$ occurs in sample $s$; $tf_{w,c}$ - number of times term $w$ occurs in class $c$; and $|c|$ - total number of terms in class $C$.
 
-In order to parallelize Naive Bayes applied to text categorization we split the training data in $p$ partitions $S_1, S_2, ..., S_p$, where $p$ is number of processes. Then we estimate ${N_c}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ on every partition $S_i$. Finally, we mix ${N_c}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ to obtain a model trained on $S$.
+In order to parallelize Naive Bayes applied to text categorization we split the training data in $p$ partitions $S_1, S_2, ..., S_p$, where $p$ is number of processes. Then we estimate ${N_c}_i$, ${tf_{w,s}}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ on every partition $S_i$. Finally, we mix ${N_c}_i$, ${tf_{w,s}}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ to obtain a model trained on $S$.
 
 \section{Menthor framework}
 
-To parallize the algorithms functionality we use Menthor\cite{oai:infoscience.epfl.ch:165111}. Menthor is a framework for parallel graph processing, but it is not limited to only to graphs. It is inspired by BSP with functional reduction/aggregation mechanisms.The  framework aims to ease parallelizing machine learning functionality and it is is implemented in Scala programming language with the Actor model.
+To parallize the algorithms functionality we use Menthor\cite{oai:infoscience.epfl.ch:165111}. Menthor is a framework for parallel graph processing, but it is not limited only to graphs. It is inspired by BSP with functional reduction/aggregation mechanisms. The  framework aims to ease parallelizing machine learning functionality and it is is implemented in Scala programming language with the Actor model.
 
 In Menthor all data to be processed is represented as a data graph. Vertices in such a graph typically represent atomic data items, while edges represent relationships between these atoms. In addition to the data item that it represents, a vertex stores a
 single value that is iteratively updated during processing - thus, an algorithm is implemented by defining how the value of each vertex changes over time. At each step the algorithm a vertex can exchange and receive messages from other vertices. Thus, the update of a vertex’s value is based on its current value, its list of incoming messages, as well as its local state. During the execution of an iteration each update step on different vertices is executed in parallel.
@@ -324,9 +324,9 @@ The advantage of this strategy is that only $p(p-1)$ messages are needed in orde
 
 The project is entirely implemented in Scala programming language\footnote{www.scala-lang.org}, except for one method that is implemented in Java\footnote{www.java.com} that was needed in order to avoid JVM Double autoboxing which significantly impacts numerical operation performance.
 
-The excellent Scalala \footnote{github.com/scalala/Scalala} numeric linear algebra library is used for numeric computation and sparse vectors support. The library also provides rich Matlab-like operators on vector and matrices, as well as on standard scala data structures like Lists, Sets, Arrays and Maps.
+The excellent Scalala \footnote{github.com/scalala/Scalala} numeric linear algebra library is used for numeric computation and sparse vectors support. The library also provides rich Matlab-like operators on vector and matrices, as well as on standard Scala data structures like Lists, Sets, Arrays and Maps.
  
-We are, also, using Trove\footnote{trove.starlight-systems.com} high performance collection library for Java, which is very easy to do from Scala thanks to its seamless integration with Java. We do that because when dealing with a lot of numeric data on JVM it is very imporant to minimize autoboxing due to the impact on performance, and, also, save memory.  The problem with standard collections is that every time you write a double number to Java or Scala hash map it is automatically box to its Double object, Trove provides optimized collections that avoid this behaviour.
+We are, also, using Trove\footnote{trove.starlight-systems.com} high performance collection library for Java, which is very easy to do from Scala thanks to its seamless integration with Java. We do that because when dealing with a lot of numeric data on JVM it is very important to minimize autoboxing due to the impact on performance, and, also, to save memory.  The problem with standard collections is that every time you write a double number to Java or Scala hash map it is automatically box to its Double object, Trove provides optimized collections that avoid this behaviour.
 
 We are using Sbt \footnote{https://github.com/harrah/xsbt} to manage project dependencies and organize the build procedure.
 
@@ -355,12 +355,12 @@ There are two main class hierarchy Classifier on figure \ref{fig:classes1} and T
   \label{fig:classes1}
 \end{figure}
 
-As depicted on figure \ref{fig:classes1} there are two classes that inherit from Classifier abstract class: MaxentClassifier and NaiveBayesClassifier. Classes inherited from Classifier have to implement probClassifiy method that returns the probability distribution for every class of the classifier. The method classify from Classifer uses probClassify and returns the class with highest probability.
+As depicted on figure \ref{fig:classes1} there are two classes that inherit from Classifier abstract class: MaxentClassifier and NaiveBayesClassifier. Classes inherited from Classifier have to implement probClassifiy method that returns the probability distribution for every class of the classifier. The method classify from Classifier uses probClassify and returns the class with highest probability.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics*[scale=0.45]{classes2.eps}
-  \caption{Trainer class heiracy}
+  \caption{Trainer class hierarchy}
   \label{fig:classes2}
 \end{figure}
 
@@ -380,7 +380,7 @@ We are experimenting with three data sets: Movie Reviews\cite{Pang+Lee:04a}, 20 
 
 \subsection{Movie Reviews}
 
-Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negative. The task is to train a classifier which decides if unseen movie review is negative or positive. The data set is small, and uninteresing for large scale machine learning but it was used at the beginning of the development to test the correctness of the algorithms. The classification accuracy for this corpus is given in table \ref{table:mrprecision}. 
+Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negative. The task is to train a classifier which decides if unseen movie review is negative or positive. The data set is small, and uninteresting for large scale machine learning but it was used at the beginning of the development to test the correctness of the algorithms. The classification accuracy for this corpus is given in table \ref{table:mrprecision}. 
 
 \begin{table}[ht]
 \centering
@@ -393,7 +393,7 @@ Movie Reviews dataset contains 2000 movie reviews: 1000 positive and 1000 negati
     \hline
   \end{tabular}
 \label{table:mrprecision}
-\caption{Moview Reviews data set classification accuracy}
+\caption{Movie Reviews data set classification accuracy}
 \end{table}
 
 At each separate run the data is split into training and test sets. The test set is 10\% of the the collection and training set is the rest. The test set is determined at random for each run, thus the accuracy from the table is calculate as average of 5 runs of the algorithms.
@@ -499,7 +499,7 @@ Algorithms are tests with 1,2,4,6,8 cores, for each core we have performed 5 ite
 \centering
 \begin{tabular}{ l c }
     \hline\hline
-    Cores & Avarage Time \\ [0.2ex]
+    Cores & Average Time \\ [0.2ex]
     \hline
     1 & 346361.75 \\
     2 & 185633.75  \\
@@ -531,7 +531,7 @@ The average time for this strategy on 8 cores is 5241952 ms which around 111x ti
 \centering
 \begin{tabular}{ l c }
     \hline\hline
-    Cores & Avarage Time \\ [0.2ex]
+    Cores & Average Time \\ [0.2ex]
     \hline
     1 &  67235 \\
     8 & 67140.75  \\
@@ -555,7 +555,7 @@ As expected there is no speed up between 1 and 8 cores for the sequential versio
 \centering
 \begin{tabular}{ l c }
     \hline\hline
-    Cores & Avarage Time \\ [0.2ex]
+    Cores & Average Time \\ [0.2ex]
     \hline
     1 & 8509 \\
     2 & 4731.5  \\
@@ -587,7 +587,7 @@ The average time for this strategy on 8 cores is 62300.5 ms which around 38x tim
 \centering
 \begin{tabular}{ l c }
     \hline\hline
-    Cores & Avarage Time \\ [0.2ex]
+    Cores & Average Time \\ [0.2ex]
     \hline
     1 & 5224.75 \\
     8 & 5579.75  \\

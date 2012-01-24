@@ -20,13 +20,16 @@
 \titlepage
 \end{frame}
 
-\begin{frame}{Introduction}
+\begin{frame}{Motivation}
 
 \begin{itemize}
- \item Parallel programming is hard, especially for complex Machine Learning algorithms 
- \item Sequential algorithms scalablity is limited because the data is growing much faster then the computational power of single processor.
- \item Exponential growth of data in natural language e.g. web pages, books, magazines, etc...
- \item Possible solution - use a framework to abstract the complexity of parallel programming
+ \item Rapid growth of data in natural language
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=0.30]{presentation/EnwikipediaGom.PNG}
+\end{figure}
+
 \end{itemize}
 
 \end{frame}
@@ -36,9 +39,15 @@
 \begin{frame}{Goals}
 
 \begin{itemize}
- \item Experiment with parallization based on Menthor\citep{oai:infoscience.epfl.ch:165111} - a framework for implementing parallel and distributed machine learning algorithms on large graphs
- \item Implement Maximum Entropy\citep{berger_a1-etal:1996a} and Naive Bayesian\citep{Rennie03} - two widely used machine learning algorithms for Natural Language Processing
- \item Benchmark two parallelization strategies: vertex for every sample, and vertex for set of sample, on the text classification task
+ \item Parallization based on Menthor\citep{oai:infoscience.epfl.ch:165111}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=0.20]{presentation/Menthor.png}
+\end{figure}
+
+ \item Implement Maximum Entropy\citep{berger_a1-etal:1996a} and Naive Bayesian\citep{Rennie03}
+ \item Benchmark two different parallelization strategies
 \end{itemize}
 
 \end{frame}
@@ -48,7 +57,7 @@
 \begin{frame}{Outline}
 
 \begin{itemize}
- \item Introduction
+ \item Motivation
  \item Goals
  \item Outline
  \item Text Categorization
@@ -77,11 +86,15 @@
 
 \begin{frame}{Text Categorization}
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=0.6]{presentation/text_categorization.jpg}
+\end{figure}
+
 \begin{itemize}
- \item Given set of categoris and a document, put the document in one of the categories.
- \item The training set consist of a collection of categorized documents
- \item Feaure set - words that we use to reprsent a document; common words like "a", "an", "the" are ignored
-\item Spam filtering is a popular example of text categorization application
+ \item Determine the category of a document
+ \item Predefined categories
+ \item Spam filtering - spam or not spam
 \end{itemize}
 
 \end{frame}
@@ -91,7 +104,7 @@
 \begin{frame}{Classification Algorithms - Maximum Entropy}
 
 \begin{itemize}
- \item Kamal Nigam et al. "When nothing is known, the distribution should be as uniform as possible, that is, have maximal entropy" \citep{oai:CiteSeerPSU:93050}
+ \item The probability should be as uniform as possible, i.e. have maximum entropy
 
 \begin{equation}
 \label{mx:expdistr}
@@ -102,7 +115,7 @@ P_{\Lambda}(c|s) = \frac{1}{Z(s)} \sum_{i}\exp(\lambda_i f_i(s,c))
 
 \begin{itemize}
 	\item \textbf{Inputs:} Set $S$ of labeled samples and a set of feature functions $f_i$.
-	\item Estimate expected value of $f_i$ on the traning samples.
+	\item Estimate expected value of $f_i$ on the training samples.
 	\item Initialize all the parameters $\lambda_i$'s to be zero.
 	\item Iterate until convergence:
 	\begin{itemize}
@@ -139,6 +152,13 @@ P(s|c) = \prod_{w} P(w|c)^{tf_{w,s}}
 P(w|c) = \frac{tf_{w,c}}{|c|}
 \]
 
+	\begin{itemize}
+	\item $N_c$ - \# of samples that have class $c$
+	\item $tf_{w,s}$ - \# of times term $w$ occurs in sample $s$
+	\item $tf_{w,c}$ - \# of times term $w$ occurs in class $c$
+	\item $|c|$ - total number of terms in class $C$
+	\end{itemize}
+
 \end{itemize}
 
 \end{frame}
@@ -148,13 +168,18 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \begin{frame}{Parallelization - Maximum Entropy}
 
 \begin{itemize}
- \item Mixture Weight Method - the training data is split in $p$ partitions $S_1, S_2, ..., S_p$, and training is performed separately on every partition, on each iteration the parameter vector $\Lambda_i$ of process $i$ is exchanged with other training processes, then the parameters are mixed as follows:
+ \item Mixture Weight Method \citep{conf/nips/MannMMSW09}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=0.50]{presentation/mixture_weight.eps}
+\end{figure}
 
 \[
-\Lambda_{\mu} = \sum_{k=1}^{p} \mu \Lambda_{k}
+\Lambda_{\mu} = \sum_{k=1}^{p} \frac{1}{p} \Lambda_{k}
 \]
 
-\item Drawback - if the training set is small and $p$ is large, each parameter vector $\Lambda_i$ is estimated on small training data which leads to bad models.
+\item Not good for small training sets
 
 \end{itemize}
 
@@ -166,9 +191,14 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 
 \begin{itemize}
 
-\item Split the training data in $p$ partitions $S_1, S_2, ..., S_p$, where $p$ is number of processes. Then estimate ${N_c}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ on every partition $S_i$. Finally, mix ${N_c}_i$, ${tf_{w,c}}_i$, and ${|c|}_i$ to obtain a model trained on $S$.
+\item Split the training data and then mix
 
-\item With Naive Bayes we do not lose accuracy if the training set partitions are too small.
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=0.40]{presentation/naive_bayes_split.eps}
+\end{figure}
+
+\item No accuracy lose
 
 \end{itemize}
 
@@ -179,10 +209,10 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \begin{frame}{Parallelization - Strategy 1: Vertex for every sample}
 
 \begin{itemize}
-\item The data is partitioned into $p$ partitions, and then the samples from every partition are added as vertices in the graph
-\item Every partition has a master vertex that is used for aggregation
-\item $|S| + p(p-1)$ message exchanges are needed in order to compute a global function
-\item Significatant communcation overhead
+\item Every sample is a vertex  
+\item Master vertex for aggregation
+\item $|S| + p(p-1)$ message exchanges 
+\item Signification communication overhead
 \end{itemize}
 
 \begin{figure}[!htb]
@@ -198,9 +228,9 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \begin{frame}{Parallelization - Strategy 2: Vertex for set of samples}
 
 \begin{itemize}
-\item The data is partitioned into $p$ partitions, then a vertex for each partition  created
-\item Each vertex contains the set of samples for the given partition
-\item $p(p-1)$ message exchanges are needed in order to compute a global function
+\item Vertex for each partition 
+\item The vertex has set of samples
+\item $p(p-1)$ message exchanges
 \item Low communication overhead
 \end{itemize}
 
@@ -249,9 +279,9 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \item 20 Newsgroups \footnote{people.csail.mit.edu/jrennie/20Newsgroups}
 
 \begin{itemize}
-\item 25000 messages taken from 20 newsgroups
+\item 25000 document
 \item 18846 training examples, and 7532 test examples
-\item 20 categories: alt.atheism, comp.graphics, comp.os.ms-windows.misc, etc...
+\item 20 categories
 \item 5000 features
 \end{itemize}
 
@@ -282,9 +312,23 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \begin{itemize}
 \item Prepared for evaluating information retrieval tasks
 \item 2,666,190 articles from Wikipedia; we use a subsets of 40,000 articles
-\item 331 categories taken from dbpedia\footnote{dbpedia.org/About}: person, song, newspaper, etc...
+\item 331 categories taken from Dbpedia\footnote{dbpedia.org/About}
 \item 10000 features
 \end{itemize}
+
+\end{itemize}
+
+\end{frame}
+
+%----------------------------------
+
+\begin{frame}{Experimental results - Benchmark Methodology}
+
+\begin{itemize}
+
+\item 8 cores machine
+\item 40 000 articles from wikipedia
+\item 5 runs for every core, ignore the first one
 
 \end{itemize}
 
@@ -299,9 +343,9 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \item{Vertex for a set of sample}
 
 \begin{itemize}
-\item Average improvement of 1.65x times for every 2 cores
-\item The biggest improvement is between 1 and 2 cores - 1.86x times
-\item The overall improvement between 1 and 8 cores is 7.38x times
+\item 1.65x times faster for every 2 cores on average
+\item 1.86x times between 1 and 2 cores
+\item 7.38x times between 1 and 8 cores
 \end{itemize}
 
 \begin{figure}[!htb]
@@ -322,13 +366,16 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 
 \item{Vertex for every sample}
 
-The average time for this strategy on 8 cores is 5241952 ms which around 111x times worse then the time for vertex for set of samples strategy.
+\begin{itemize}
+\item  5241952 ms  on 8 cores 
+\item  111x times slower
+\end{itemize}
 
 \item{Sequential}
 
 \begin{itemize}
 \item No improvement between 1 and 8 cores
-\item Parallel version is only 1.40x times then the sequential version
+\item Parallel version is 1.40x times faster
 \end{itemize}
 
 \begin{table}[!htb]
@@ -357,9 +404,9 @@ The average time for this strategy on 8 cores is 5241952 ms which around 111x ti
 \item{Vertex for a set of sample}
 
 \begin{itemize}
-\item Average improvement of 1.52x times for every 2 cores
-\item The biggest improvement is between 1 and 2 cores - 1.79x times
-\item The overall improvement between 1 and 8 cores is 5.25x times
+\item 1.52x times faster for every 2 cores on average
+\item 1.79x times between 1 and 2 cores
+\item 5.25x times between 1 and 8 cores
 \end{itemize}
 
 \begin{figure}[!htb]
@@ -380,20 +427,23 @@ The average time for this strategy on 8 cores is 5241952 ms which around 111x ti
 
 \item{Vertex for every sample}
 
-The average time for this strategy on 8 cores is 62300.5 ms which around 38x times worse then the time for vertex for set of samples strategy.
+\begin{itemize}
+\item  62300.5 ms on 8 cores 
+\item  38x times slower
+\end{itemize}
 
 \item{Sequential}
 
 \begin{itemize}
 \item No improvement between 1 and 8 cores
-\item Parallel version is only 3.10x times then the sequential version
+\item Parallel version is 3.10x times faster
 \end{itemize}
 
 \begin{table}[!htb]
 \centering
 \begin{tabular}{ l c }
     \hline\hline
-    Cores & Avarage Time \\ [0.2ex]
+    Cores & Average Time \\ [0.2ex]
     \hline
     1 & 5224.75 \\
     8 & 5579.75  \\
@@ -404,6 +454,23 @@ The average time for this strategy on 8 cores is 62300.5 ms which around 38x tim
 
 \end{itemize}
 
+\end{frame}
+
+%----------------------------------
+
+\begin{frame}{Experimental results - Comparison}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=0.45]{presentation/comparison.png}
+\end{figure}
+
+\end{frame}
+
+%----------------------------------
+
+\begin{frame}{Conclusion}
+Menthor makes it easy to implement parallel machine learning algorithms without much effort and with excellent scalability.
 \end{frame}
 
 %----------------------------------
