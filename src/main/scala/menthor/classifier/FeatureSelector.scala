@@ -5,6 +5,11 @@ import menthor.util.ConditionalProbabilityDistribution
 import menthor.util.FrequencyDistribution
 import menthor.util.ConditionalFrequencyDistribution
 
+/**
+ * Generic feature selector interface with a single method select
+ * 
+ * @author Stanislav Peshterliev
+ */
 trait FeatureSelector[C] {
   val N : Int
   

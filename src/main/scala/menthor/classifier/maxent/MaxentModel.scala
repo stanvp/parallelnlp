@@ -7,6 +7,15 @@ import scalala.tensor.sparse.SparseVector
 import scala.collection.immutable.HashMap
 import scalala.tensor.dense.DenseVector
 
+/**
+ * Maximum entropy represents the data needed for classification, and provides sample encoding. 
+ * 
+ * @param classes list of classification classes
+ * @param features list of features that are used to represent samples
+ * @param parameters exponential model parameter vector estimated from training data
+ *  
+ * @author Stanislav Peshterliev 
+ */
 class MaxentModel[C, S <: Sample](
   val classes: List[C],
   val features: List[Feature],

@@ -8,6 +8,14 @@ import menthor.util.FrequencyDistribution
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
+/**
+ * Sequential Naive Bayes classifier trainer.
+ * For more information @see the technical report.
+ * 
+ * @param features set of features to represent samples
+ * 
+ * @author Stanislav Peshterliev
+ */
 class NaiveBayesTrainer[C, S <: Sample](features: List[Feature]) extends Trainer[C, S] with Logged {
   override def train(
     classes: List[C],
@@ -23,7 +31,6 @@ class NaiveBayesTrainer[C, S <: Sample](features: List[Feature]) extends Trainer
     log("Processing samples")
 
     for ((cls, sample) <- samples) {
-
       sample.features.forEachEntry(new TIntDoubleProcedure {
         override def execute(feature: Int, value: Double): Boolean = {
           classFeatureFreqDistr(cls).increment(feature, value)

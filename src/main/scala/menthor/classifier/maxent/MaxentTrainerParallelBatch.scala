@@ -21,10 +21,17 @@ import menthor.util.ConditionalFrequencyDistribution
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
+/**
+ * Parallel Maximum Entropy classifier trainer that implements "Vertex for set of samples" strategy.
+ * For more information @see the technical report.
+ * 
+ * @param partitions number of partitions to split the data
+ * @param features set of features to represent samples
+ * @param iterations number of iterations, if the parameters did not converge after this number then cutoff the training
+ *  
+ * @author Stanislav Peshterliev
+ */
 class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List[Feature], iterations: Int = 100) extends Trainer[C, S] with Logged {
-  /**
-   * Train maximum entropy classifier
-   */
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
@@ -43,6 +50,7 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     val graph = new Graph[ProcessingResult]
     val samplesSize = samples.size
 
+    // partition the samples
     for ((group, i) <- samples.grouped(Math.ceil(samples.size.toDouble / partitions).toInt).zipWithIndex) {
       val vertex = new MasterVertex[C, S]("master" + i, classifier, group)
       graph.addVertex(vertex)
@@ -60,6 +68,9 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     classifier
   }
 
+  /**
+   * Master vertex that implements the computation on set of samples with IIS algorithm
+   */
   class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], samples: Iterable[(C, S)])
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
@@ -83,6 +94,8 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     def update(superstep: Int, incoming: List[Message[ProcessingResult]]): Substep[ProcessingResult] = {
       {
         if (superstep == 0) {
+          // calculate empirical features distribution
+          
           val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
           var j = 0
@@ -105,6 +118,7 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
         }
         List()
       } then {
+        // estimate parameters
         if (!cutoff) {
           iteration += 1
 
@@ -131,22 +145,26 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
 
           loglikelihood = Math.log(likelihoodsum / samplesSize)
 
-//          if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
-//            log("Cutoff at iteration " + (iteration - 1))
-//            cutoff = true
-//            List()
-//          } else {
+          
+          if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+            // loglikelihood cutoff
+            log("Cutoff at iteration " + (iteration - 1))
+            cutoff = true
+            List()
+          } else {
+            // continue with the training
             val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
             value.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 
             lastLoglikelihood = loglikelihood
 
             for (neighbor <- graph.vertices) yield Message(this, neighbor, this.value)
-//          }
+          }
         } else {
           List()
         }
       } then {
+        // mix estimated parameters
         if (!incoming.isEmpty) {
           value.parameters = (incoming.map(_.value.parameters).reduce { (x, y) => x + y } / incoming.size)
           classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
@@ -157,6 +175,9 @@ class MaxentTrainerParallelBatch[C, S <: Sample](partitions: Int, features: List
     }
   }
 
+ /**
+  * The data value type for Menthor vertices 
+  */  
   case class ProcessingResult {
     var parameters: Vector[Double] = _
   }

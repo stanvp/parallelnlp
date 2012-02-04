@@ -12,9 +12,15 @@ import gnu.trove.map.hash.TIntDoubleHashMap
 import gnu.trove.procedure.TIntDoubleProcedure
 
 /**
- *
- * All estimates are logged in order to be used directly in the classification
- *
+ * Naive Bayes model represents the data needed for classification, and provides sample encoding. 
+ * 
+ * @param classes list of classification classes
+ * @param features list of features that are used to represent samples
+ * @param classFeatureFreqDistr conditional frequency distribution of feature given a class estimated from the training data
+ * @param featureFreqDistr number of a given feature estimated from the training data
+ * @param classSamplesFreqDistr number of samples in a given class estimated from the training data
+ *  
+ * @author Stanislav Peshterliev 
  */
 case class NaiveBayesModel[C, S <: Sample](
   classes: List[C],

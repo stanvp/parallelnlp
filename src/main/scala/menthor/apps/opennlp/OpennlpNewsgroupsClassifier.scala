@@ -18,6 +18,11 @@ import menthor.classifier.featureselector.IGFeatureSelector
 import menthor.apps.Document
 import menthor.apps.Analyzer
 
+/**
+ * Evaluates OpenNLP Maximum Entropy based document categorizer on 20 Newsgroups corpus 
+ * 
+ * @author Stanislav Peshterliev
+ */
 object OpennlpNewsgroupsClassifier {
 
   def load(folder: String): List[(String, String, String)] = {
@@ -39,7 +44,7 @@ object OpennlpNewsgroupsClassifier {
 
   def main(args: Array[String]) {
     if (args.size < 2) {
-      println("Please specify [model path] [news group corpus path]")
+      println("Please specify [categorizer model path] [news group corpus path]")
       exit
     }    
     

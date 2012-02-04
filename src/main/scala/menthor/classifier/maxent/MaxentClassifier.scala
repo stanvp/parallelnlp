@@ -14,13 +14,13 @@ import menthor.util.ProbabilityDistribution
 import scalala.tensor.sparse.SparseVector
 
 /**
- * Maximum entropy classifier
+ * Maximum entropy classifier, given a model, determines the class of sample.
+ * The probabilities are calculated in log space.
  *
- * Uses logarithmic parameter weights
- *
- * For more information see the tutorial available at http://nlp.stanford.edu/software/classifier.shtml
+ * For more information @see the technical reprot and the following tutorial:
  * Christopher Manning and Dan Klein. 2003. Optimization, Maxent Models, and Conditional Estimation without Magic. Tutorial at HLT-NAACL 2003 and ACL 2003.
- *
+ * 
+ * @author Stanislav Peshterliev
  */
 case class MaxentClassifier[C, S <: Sample](val model: MaxentModel[C, S]) extends Classifier[C, S] {
   

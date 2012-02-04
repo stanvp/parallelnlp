@@ -19,6 +19,15 @@ import scalala.tensor.mutable._
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
+/**
+ * Parallel Naive Bayes classifier trainer that implements "Vertex for every sample" strategy.
+ * For more information @see the technical report.
+ * 
+ * @param partitions number of partitions to split the data
+ * @param features set of features to represent samples
+ * 
+ * @author Stanislav Peshterliev
+ */
 class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feature]) extends Trainer[C, S] with Logged {
   override def train(
     classes: List[C],
@@ -29,13 +38,14 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
     log("Building the graph")
 
     val graph = new Graph[ProcessingResult[C]]
-
+  
     val masters = (for (i <- 0 to partitions - 1) yield new MasterVertex[C, S]("master" + i)).toList
 
     for (master <- masters) {
       graph.addVertex(master)
     }
 
+    // partition samples
     for ((group, i) <- samples.grouped(Math.ceil(samples.size.toDouble / partitions).toInt).zipWithIndex) {
       for ((c, sample) <- group) {
         val vertex = new SampleVertex(sample.toString, c, sample)
@@ -71,6 +81,9 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
     classifier
   }
 
+  /**
+   * Master vertex implements aggregate computation
+   */
   class MasterVertex[C, S <: Sample](label: String)
     extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
 
@@ -84,7 +97,10 @@ class NaiveBayesTrainerParallel[C, S <: Sample](partitions: Int, features: List[
       }
     }
   }
-
+   
+  /**
+   * Sample vertex implements the computation on every sample
+   */
   class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S)
     extends Vertex[ProcessingResult[C]](label, new ProcessingResult[C]) {
 

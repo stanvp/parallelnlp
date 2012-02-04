@@ -15,6 +15,11 @@ import menthor.classifier.featureselector.IGFeatureSelector
 import gnu.trove.map.hash.TIntDoubleHashMap
 import benchmark.TicToc
 
+/**
+ * Command line interface for experimenting with 20 Newsgroups corpus 
+ * 
+ * @author Stanislav Peshterliev
+ */
 object NewsgroupsClassifier extends TicToc {
 
   val categories = List(
@@ -106,7 +111,7 @@ object NewsgroupsClassifier extends TicToc {
 
     for (i <- 1 to benchmarkIterations + 1) {
       if (i == 1) {
-    	classifier = trainer.train(categories, samples)
+        classifier = trainer.train(categories, samples)
       } else {
         tic()
 
@@ -117,9 +122,9 @@ object NewsgroupsClassifier extends TicToc {
     }
 
     if (benchmarkIterations > 0) {
-    	writeTimesLog(benchmarkResultFile)
+      writeTimesLog(benchmarkResultFile)
     }
-    
+
     if (evaluation == true) {
 
       println("Evaluation")

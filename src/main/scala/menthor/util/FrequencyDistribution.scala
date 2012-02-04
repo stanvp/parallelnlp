@@ -5,6 +5,13 @@ import scala.collection.mutable.HashMap
 import gnu.trove.map.hash.TObjectDoubleHashMap
 import scala.collection.JavaConversions._
 
+/**
+ * Represents frequency distribution.
+ * Frequency distribution is a map from keys to counts with additional methods for totals and frequencies.
+ * Inspired by NLTK <http://www.nltk.org/>
+ * 
+ * @author Stanislav Peshterliev
+ */
 class FrequencyDistribution[T](_distribution : TObjectDoubleHashMap[T] = new TObjectDoubleHashMap[T]()) {
   private[this] val distribution : TObjectDoubleHashMap[T] = _distribution
   private var _total = _distribution.values.sum
@@ -33,6 +40,12 @@ object FrequencyDistribution {
   }
 }
 
+/**
+ * Represents frequency distribution given some condition.
+ * Inspired by NLTK <http://www.nltk.org/>
+ * 
+ * @author Stanislav Peshterliev
+ */
 class ConditionalFrequencyDistribution[U,T](_distributions : HashMap[U,FrequencyDistribution[T]] = new HashMap[U,FrequencyDistribution[T]]) {
   private[this] val distributions = _distributions
   

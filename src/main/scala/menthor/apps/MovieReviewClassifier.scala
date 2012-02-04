@@ -13,10 +13,15 @@ import scala.collection.mutable.ListBuffer
 import scala.util.logging.ConsoleLogger
 import menthor.classifier.featureselector.IGFeatureSelector
 
+/**
+ * Command line interface for experimenting with Move Review corpus 
+ * 
+ * @author Stanislav Peshterliev
+ */
 object MovieReviewClassifier {
-  
+
   val categories = List("neg", "pos")
-  
+
   def load(folder: String, extendIndex: Boolean): Iterable[Document] = {
     val collection = new ListBuffer[Document]
 
@@ -26,7 +31,7 @@ object MovieReviewClassifier {
           file.getName(),
           List(file.getParentFile().getName()),
           Analyzer.termFrequency(Source.fromFile(file).getLines().mkString("\n"), extendIndex))
-        
+
         collection += document
     }
 
@@ -40,53 +45,52 @@ object MovieReviewClassifier {
       println("traning mode can be: parallel or sequential")
       exit
     }
-    
+
     val features = loadFeatures(args(3))
-    
-	val collection = Random.shuffle(load(args(2), false))
-	
-	// split the collection into training and test sets  
-	val testSize = (collection.size * 0.1).toInt
-	val test = collection.slice(0, testSize - 1)
-	
-	val train = collection //.slice(testSize, collection.size - 1)
-		
-	val samples = train.view.flatMap(d => 
-	  d.categories.map(c => (c, d)) 
-	)
-	
-	val trainer = args.first match {
-	  case "maxent" =>
-	  	 args(1) match {
-	  	   case "parallel" => new MaxentTrainerParallel[Category, Document](3, features) with ConsoleLogger
-	  	   case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](8, features) with ConsoleLogger
-	  	   case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
-	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
-	  	 }	    
-	  case "naivebayes" =>
-	  	 args(1) match {
-	  	   case "parallel" => new NaiveBayesTrainerParallel[Category, Document](8, features) with ConsoleLogger
-	  	   case "sequential" => new NaiveBayesTrainer[Category, Document](features) with ConsoleLogger
-	  	   case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
-	  	 }
-	  case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")
-	}
-	
-	val classifier = trainer.train(categories, samples)
-	
-	println("Evaluation")
-	
-	var success = 0
-	for (d <- test) {
-	  val r = classifier.classify(d)
-	  
-	  if (d.categories.contains(r._1)) {
-	    success += 1
-	  }
-	}
-	
-	println("Total: " + test.size)
-	println("Success: " + success)
-	println("Percent: " + ((success / test.size.toFloat) * 100 ) + " %")
+
+    val collection = Random.shuffle(load(args(2), false))
+
+    // split the collection into training and test sets  
+    val testSize = (collection.size * 0.1).toInt
+    val test = collection.slice(0, testSize - 1)
+
+    val train = collection.slice(testSize, collection.size - 1)
+
+    val samples = train.view.flatMap(d =>
+      d.categories.map(c => (c, d)))
+
+    val trainer = args.first match {
+      case "maxent" =>
+        args(1) match {
+          case "parallel" => new MaxentTrainerParallel[Category, Document](3, features) with ConsoleLogger
+          case "parallelbatch" => new MaxentTrainerParallelBatch[Category, Document](8, features) with ConsoleLogger
+          case "sequential" => new MaxentTrainer[Category, Document](features) with ConsoleLogger
+          case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
+        }
+      case "naivebayes" =>
+        args(1) match {
+          case "parallel" => new NaiveBayesTrainerParallel[Category, Document](8, features) with ConsoleLogger
+          case "sequential" => new NaiveBayesTrainer[Category, Document](features) with ConsoleLogger
+          case _ => throw new IllegalArgumentException("Illegal traning mode, choose parallel or sequential")
+        }
+      case _ => throw new IllegalArgumentException("Illegal algorithm, choose maxent or naivebayes")
+    }
+
+    val classifier = trainer.train(categories, samples)
+
+    println("Evaluation")
+
+    var success = 0
+    for (d <- test) {
+      val r = classifier.classify(d)
+
+      if (d.categories.contains(r._1)) {
+        success += 1
+      }
+    }
+
+    println("Total: " + test.size)
+    println("Success: " + success)
+    println("Percent: " + ((success / test.size.toFloat) * 100) + " %")
   }
 }

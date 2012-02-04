@@ -19,10 +19,16 @@ import gnu.trove.procedure.TIntDoubleProcedure
 import menthor.util.ProbabilityDistribution
 import scala.collection.mutable.ListBuffer
 
+/**
+ * Sequential Maximum Entropy classifier trainer.
+ * For more information @see the technical report.
+ *
+ * @param features set of features to represent samples
+ * @param iterations number of iterations, if the parameters did not converge after this number then cutoff the training
+ *
+ * @author Stanislav Peshterliev
+ */
 class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 100) extends Trainer[C, S] with Logged {
-  /**
-   * Train maximum entropy classifier
-   */
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
@@ -38,6 +44,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
 
     log("Processing samples")
 
+    // calculate empirical features distribution
     val encodings = Array.ofDim[(C, SparseVector[Double])](samples.size)
     val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
@@ -67,6 +74,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
     var n = 0
     var cutoff = false
 
+    // iterate
     while (!cutoff && n <= iterations) {
       n += 1
       
@@ -74,6 +82,7 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
 
       likelihoodsum = 0.0
 
+      // estimate parameters
       for ((cls, encoding) <- encodings) {
         val dist = classifier.probClassify(encoding)
 
@@ -94,9 +103,11 @@ class MaxentTrainer[C, S <: Sample](features: List[Feature], iterations: Int = 1
       loglikelihood = Math.log(likelihoodsum / samplesSize)
 
       if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+        // loglikelihood cutoff
         log("Cutoff at iteration " + (n - 1))
         cutoff = true
       } else {
+        // continue with the training
         val logEstimatedFeatureFreqDistr = estimatedFeatureFreqDistr.map(x => if (x == 0.0) 0.0 else Math.log(x))
         classifier.model.parameters += (logEmpiricalFeatureFreqDistr - logEstimatedFeatureFreqDistr)
 

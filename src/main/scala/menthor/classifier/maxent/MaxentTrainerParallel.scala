@@ -21,10 +21,17 @@ import menthor.util.ConditionalFrequencyDistribution
 import scala.util.logging.Logged
 import gnu.trove.procedure.TIntDoubleProcedure
 
+/**
+ * Parallel Maximum Entropy classifier trainer that implements "Vertex for every sample" strategy.
+ * For more information @see the technical report.
+ *
+ * @param partitions number of partitions to split the data
+ * @param features set of features to represent samples
+ * @param iterations number of iterations, if the parameters did not converge after this number then cutoff the training
+ *
+ * @author Stanislav Peshterliev
+ */
 class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feature], iterations: Int = 100) extends Trainer[C, S] with Logged {
-  /**
-   * Train maximum entropy classifier
-   */
   override def train(
     classes: List[C],
     samples: Iterable[(C, S)]): Classifier[C, S] = {
@@ -50,6 +57,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
       graph.addVertex(master)
     }
 
+    // partition the samples
     for ((group, i) <- samples.grouped(Math.ceil(samples.size.toDouble / partitions).toInt).zipWithIndex) {
       for ((c, sample) <- group) {
         val vertex = new SampleVertex(sample.toString, c, sample, i, masters(i))
@@ -71,6 +79,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     classifier
   }
 
+  /**
+   * Master vertex implements aggregate computation
+   */
   class MasterVertex[C, S <: Sample](label: String, val classifier: MaxentClassifier[C, S], group: Int, var masters: List[MasterVertex[C, S]], val totalSamples: Int)
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
@@ -79,7 +90,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     val model = classifier.model
 
     var logEmpiricalFeatureFreqDistr: DenseVector[Double] = _
-    
+
     value.parameters = classifier.model.parameters
 
     var lastLoglikelihood = Double.MaxValue
@@ -88,9 +99,11 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     def update(superstep: Int, incoming: List[Message[ProcessingResult]]): Substep[ProcessingResult] = {
       {
         // superstep == 0 - sample step
+        // calculate empirical features distribution
         List()
       } then {
         if (superstep == 1) {
+          // calculate empirical features distribution
           val empiricalFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
           incoming.map(_.value.empiricalFeatureFreqDistr).foreach { x =>
@@ -104,8 +117,10 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
         List()
       } then {
         // sample step
+        // calculate empirical features distribution
         List()
       } then {
+        // estimate parameters
         val estimatedFeatureFreqDistr = DenseVector.zeros[Double](model.parameters.size)
 
         value.likelihoodsum = 0.0
@@ -128,17 +143,21 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
 
         var likelihoodsum = incoming.map(_.value.likelihoodsum).reduce { (x, y) => x + y }
         loglikelihood = Math.log(likelihoodsum / totalSamples)
-        
-//        if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
-//        	log(label + ": Cutoff at iteration " + (iteration - 1))    
-//        	graph.workers.foreach(w => w ! "Stop")
-//        } else {
+
+        if (loglikelihood.isNaN || loglikelihood.isInfinity || loglikelihood > lastLoglikelihood) {
+          // loglikelihood cutoff
+          log(label + ": Cutoff at iteration " + (iteration - 1))
+          graph.workers.foreach(w => w ! "Stop")
+        } else {
+          // continue with the training
+          
+          // mix estimated parameters
           value.parameters = (incoming.map(_.value.parameters).reduce { (x, y) => x + y } / incoming.size)
 
           classifier.model.parameters(0 to classifier.model.parameters.size - 1) := value.parameters
 
           log(label + ": Iteration " + iteration + " - loglikelihood: " + loglikelihood)
-//        }
+        }
 
         lastLoglikelihood = loglikelihood
 
@@ -147,6 +166,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     }
   }
 
+  /**
+   * Sample vertex implements the computation on every sample
+   */
   class SampleVertex[C, S <: Sample](label: String, cls: C, sample: S, group: Int, var master: MasterVertex[C, S])
     extends Vertex[ProcessingResult](label, new ProcessingResult) {
 
@@ -159,6 +181,7 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     def update(superstep: Int, incoming: List[Message[ProcessingResult]]): Substep[ProcessingResult] = {
       {
         if (superstep == 0) {
+          // calculate empirical features distribution
           value.empiricalFeatureFreqDistr = SparseVector.zeros[Double](model.parameters.size)
           val classOffset = model.classOffset(cls)
 
@@ -172,9 +195,11 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
           List()
         }
       } then {
+        // calculate empirical features distribution
         // master step
         List()
       } then {
+        // estimate parameters
         value.estimatedFeatureFreqDistr(0 to value.estimatedFeatureFreqDistr.size - 1) := 0.0
 
         val dist = master.classifier.probClassify(encoding)
@@ -203,6 +228,9 @@ class MaxentTrainerParallel[C, S <: Sample](partitions: Int, features: List[Feat
     }
   }
 
+  /**
+   * The data value type for Menthor vertices
+   */
   case class ProcessingResult {
     var empiricalFeatureFreqDistr: Vector[Double] = _
     var estimatedFeatureFreqDistr: Vector[Double] = _

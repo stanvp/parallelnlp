@@ -11,12 +11,17 @@ import scala.collection.mutable.HashSet
 
 /**
  * Information gain based feature selector
- *
- * @see Yiming Yang and Jan O. Pedersen. 1997. A Comparative Study on Feature Selection in Text Categorization. In Proceedings of the Fourteenth International Conference on Machine Learning (ICML '97), Douglas H. Fisher (Ed.). Morgan Kaufmann Publishers Inc., San Francisco, CA, USA, 412-420.
+ * 
+ * @param N maximum number of features to select
+ * 
+ * For more information @see the techincal report and the following paper:
+ * Yiming Yang and Jan O. Pedersen. 1997. A Comparative Study on Feature Selection in Text Categorization. In Proceedings of the Fourteenth International Conference on Machine Learning (ICML '97), Douglas H. Fisher (Ed.). Morgan Kaufmann Publishers Inc., San Francisco, CA, USA, 412-420.
+ * 
+ * @author Stanislav Peshterliev 
  */
 class IGFeatureSelector[C, S <: Sample](val N: Int) extends FeatureSelector[C] {
   /**
-   * Computes the information gain and selects the best features
+   * Computes the information gain of every feature and selects the best features
    */
   def select(
     classes: List[C],

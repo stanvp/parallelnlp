@@ -14,6 +14,14 @@ import menthor.util.ProbabilityDistribution
 import gnu.trove.procedure.TIntDoubleProcedure
 import gnu.trove.function.TDoubleFunction
 
+/**
+ * Naive Bayes classifier, given a model, determines the class of sample using the Bayes's rule.
+ * The probabilities are calculated in log space.
+ * 
+ * For more information @see the technical report.
+ * 
+ * @author Stanislav Peshterliev
+ */
 class NaiveBayesClassifier[C, S <: Sample](val model: NaiveBayesModel[C, S]) extends Classifier[C, S] {
   val mu = 0.1
 

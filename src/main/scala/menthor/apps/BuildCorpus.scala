@@ -18,6 +18,11 @@ import gnu.trove.map.hash.TIntObjectHashMap
 import gnu.trove.procedure.TObjectIntProcedure
 import gnu.trove.procedure.TIntDoubleProcedure
 
+/**
+ * Build efficient representation of the training corpus by feature selection and indexing 
+ * 
+ * @author Stanislav Peshterliev
+ */
 object BuildCorpus {
 
   def main(args: Array[String]) {
@@ -42,10 +47,12 @@ object BuildCorpus {
     val samples = collection.flatMap(d =>
       d.categories.map(c => (c, d)))
       
+    // feature selection  
     val ig = new IGFeatureSelector[Category, Document](size)
       
     val features = ig.select(categories, samples)
     
+    // indexing
     val index = new TIntObjectHashMap[String]()
       
     Analyzer.index.forEachEntry(new TObjectIntProcedure[String] {
@@ -55,6 +62,7 @@ object BuildCorpus {
       }
     })
     
+    // output features file
     val featuresFile = new FileWriter(featuresFilePath, true)
     
     for ((feature, score) <- features) {
@@ -63,7 +71,8 @@ object BuildCorpus {
     }
       
     featuresFile.close()
-    
+
+    // output corpus file
     val corpusFile = new FileWriter(corpusFilePath, true) 
     
     for (document <- collection) {

@@ -5,7 +5,10 @@ import scalala.operators.Implicits._
 import scala.collection.mutable.HashMap
 
 /**
- * Represents log probability distribution
+ * Represents log probability distribution.
+ * Inspired by NLTK <http://www.nltk.org/>
+ * 
+ * @author Stanislav Peshterliev
  */
 class ProbabilityDistribution[T](_distribution: Map[T, Double], normalize: Boolean = false) {
   val distribution = if (normalize) ProbabilityDistribution.normalizeLogProbabilty(_distribution) else _distribution 
@@ -18,6 +21,9 @@ object ProbabilityDistribution {
   
   /**
    * Normalize logarithmic probability distribution such that it sums to 1
+   * 
+   * @param dist probability distribution map
+   * @return normalized probability distribution
    */
   def normalizeLogProbabilty[T](dist: Map[T, Double]): Map[T, Double] = {
     val sum = logSum(dist.values.toSeq)
@@ -31,6 +37,12 @@ object ProbabilityDistribution {
   }  
 }
 
+/**
+ * Represents log probability distribution given some condition.
+ * Inspired by NLTK <http://www.nltk.org/>
+ * 
+ * @author Stanislav Peshterliev
+ */
 class ConditionalProbabilityDistribution[U,T](val distributions: Map[U,ProbabilityDistribution[T]]) { }
 
 object ConditionalProbabilityDistribution {

@@ -16,6 +16,11 @@ import scala.util.logging.ConsoleLogger
 import menthor.classifier.featureselector.IGFeatureSelector
 import benchmark.TicToc
 
+/**
+ * Command line interface for experimenting with Wikipedia corpus 
+ * 
+ * @author Stanislav Peshterliev
+ */
 object WikipediaClassifier extends TicToc {
 
   // dbpedia classes
@@ -27,32 +32,32 @@ object WikipediaClassifier extends TicToc {
     forEachFileIn(new File(folder)) {
       f =>
         try {
-        val xml = XML.loadFile(f)
+          val xml = XML.loadFile(f)
 
-        val id = (xml \\ "article" \ "header" \ "id").text
-        val title = (xml \\ "article" \ "header" \ "title").text
-        val body = (xml \\ "article" \ "bdy").text
+          val id = (xml \\ "article" \ "header" \ "id").text
+          val title = (xml \\ "article" \ "header" \ "title").text
+          val body = (xml \\ "article" \ "bdy").text
 
-        val dcategories = (xml \\ "article" \ "header" \ "categories" \ "category").flatMap { dc =>
-          val text = dc.text.toLowerCase
-          categories.filter(c => text.contains(c)).toSet
-        }
+          val dcategories = (xml \\ "article" \ "header" \ "categories" \ "category").flatMap { dc =>
+            val text = dc.text.toLowerCase
+            categories.filter(c => text.contains(c)).toSet
+          }
 
-        if (dcategories.size > 0) {
-          val document = new Document(
-            id + "_" + title,
-            dcategories.distinct.toList,
-            Analyzer.termFrequency(body, extendIndex))
+          if (dcategories.size > 0) {
+            val document = new Document(
+              id + "_" + title,
+              dcategories.distinct.toList,
+              Analyzer.termFrequency(body, extendIndex))
 
-          collection += document
-        }
+            collection += document
+          }
         } catch {
-          case e : org.xml.sax.SAXParseException => 
-          case e : java.io.IOException => 
+          case e: org.xml.sax.SAXParseException =>
+          case e: java.io.IOException =>
         }
     }
     collection.toIterable
-  }  
+  }
 
   def main(args: Array[String]) {
     if (args.size < 8) {
@@ -62,17 +67,17 @@ object WikipediaClassifier extends TicToc {
       println("evaluation be: true or false, default is false")
       exit
     }
-    
+
     val algorithm = args.first
     val traningMode = args(1)
     val trainCorpus = args(2)
     val testCorpus = args(3)
     val featuresFile = args(4)
-    val evaluation = args(5).toBoolean   
+    val evaluation = args(5).toBoolean
     val benchmarkResultFile = args(6)
     val benchmarkIterations = args(7).toInt
 
-    val features = loadFeatures(featuresFile)   
+    val features = loadFeatures(featuresFile)
 
     val train = loadCorpus(trainCorpus)
 
@@ -101,7 +106,7 @@ object WikipediaClassifier extends TicToc {
 
     for (i <- 1 to benchmarkIterations + 1) {
       if (i == 1) {
-    	classifier = trainer.train(categories, samples)
+        classifier = trainer.train(categories, samples)
       } else {
         tic()
 
@@ -110,11 +115,11 @@ object WikipediaClassifier extends TicToc {
         toc("i_" + (i - 1))
       }
     }
-    
+
     if (benchmarkIterations > 0) {
-    	writeTimesLog(benchmarkResultFile)
+      writeTimesLog(benchmarkResultFile)
     }
-    
+
     if (evaluation == true) {
 
       println("Evaluation")

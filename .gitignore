@@ -9,9 +9,10 @@ report/*.aux
 report/*.bbl
 report/*.blg
 report/*.log
-report/*.pdf
 report/*.synctex.gz
 report/*.toc
 report/*.nav
 report/*.out
 report/*.snm
+report/*converted-to.pdf
+report/presentation/*converted-to.pdf

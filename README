@@ -1,25 +1,34 @@
 Parallelized implementation of Maximum Entropy and Naive Bayesian classifier. 
 
-In order to run the tests:
+To run the tests:
 
 1. Make sure that you have Java 1.6, Scala 2.9 and sbt 0.11
 
 2. Install Menthor
 	$ git clone git@github.com:stanvp/menthor.git
 	$ cd menthor
-	$ git checkout distributed
-	$ sbt
-	> project libmenthor
-	> set publishArtifact in packageDoc := false // avoid scaladoc generation error
+	$ sbt	
+	> set publishArtifact in packageDoc := false // avoids scaladoc generation error
 	> publish-local
 	 
 3. Get the project 
-	$ git clone https://github.com/stanvp/parallelnlp
+	$ git clone git@github.com:stanvp/parallelnlp.git
 	$ cd parallelnlp	
 	$ sbt assembly
-	$ wget -c http://nltk.googlecode.com/svn/trunk/nltk_data/packages/corpora/movie_reviews.zip
-	$ unzip movie_reviews.zip	
-	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.MovieReviewClassifier naivebayes parallel movie_reviews
-	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.MovieReviewClassifier maxent parallel movie_reviews
 	
-You can also use sequential version by passing sequential instead of parallel in the parameters above.  
+4. Running experiments with Movie Review corpus 	
+	
+	$ wget -c http://nltk.googlecode.com/svn/trunk/nltk_data/packages/corpora/movie_reviews.zip
+	$ unzip movie_reviews.zip
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.BuildCorpus moviereviews 100 movie_reviews/ movie_reviews.train movie_reviews.features	
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.MovieReviewClassifier naivebayes parallelbatch movie_reviews/ movie_reviews.features
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.MovieReviewClassifier maxent parallelbatch movie_reviews/ movie_reviews.features
+	
+5. Running experiments with 20 Newsgroups corpus
+	$ wget -c http://people.csail.mit.edu/jrennie/20Newsgroups/20news-bydate.tar.gz
+	$ tar xvvf 20news-bydate.tar.gz
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.BuildCorpus newsgroups 5000 20news-bydate/20news-bydate-train 20news-bydate/20news-bydate.train 20news-bydate/20news-bydate.features	
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.NewsgroupsClassifier naivebayes parallelbatch 20news-bydate/20news-bydate.train 20news-bydate/20news-bydate-test 20news-bydate/20news-bydate.features true newsgroups.bench 1
+	$ java -Xmx2048m -XX:MaxPermSize=256m -cp target/parallelnlp-assembly-1.0-SNAPSHOT.jar menthor.apps.NewsgroupsClassifier maxent parallelbatch 20news-bydate/20news-bydate.train 20news-bydate/20news-bydate-test 20news-bydate/20news-bydate.features true newsgroups.bench 1
+	
+For more information about the project see the technical report report/parallelnlp.pdf  

@@ -3,6 +3,11 @@ package menthor.apps
 import menthor.classifier.Sample
 import gnu.trove.map.hash.TIntDoubleHashMap
 
+/**
+ * Represents document sample 
+ * 
+ * @author Stanislav Peshterliev
+ */
 case class Document(name: String, categories: List[String], termFrequency: TIntDoubleHashMap) extends Sample {
   override def toString()  = "Document(%s,%s)".format(name, categories)
   

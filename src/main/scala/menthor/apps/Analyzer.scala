@@ -5,13 +5,24 @@ import scala.collection.immutable.HashMap
 import gnu.trove.map.hash.TObjectIntHashMap
 import gnu.trove.map.hash.TIntDoubleHashMap
 
+/**
+ * Tokenize, index and removes stop words from text contents
+ * 
+ * @author Stanislav Peshterliev
+ */
 object Analyzer {
 
+  /**
+   * Set of stop words for english
+   */
   val stopWords = {
     val source = Source.fromURL(getClass.getResource("/english-stopwords.txt"))
     source.getLines().mkString(",").split(",").toSet
   }
 
+  /**
+   * Term index structure
+   */
   val index = new TObjectIntHashMap[String]()
   
   def addToIndex(term: String) : Int = {
@@ -20,6 +31,9 @@ object Analyzer {
 	  id
   }
 
+  /**
+   * Transforms text content to term to term frequency mapping 
+   */
   def termFrequency(text: String, extendIndex: Boolean): TIntDoubleHashMap = {
     val result = new TIntDoubleHashMap
 

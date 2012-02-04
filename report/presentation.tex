@@ -93,7 +93,7 @@
 
 \begin{itemize}
  \item Determine the category of a document
- \item Predefined categories
+ \item Predefined categories and training data set
  \item Spam filtering - spam or not spam
 \end{itemize}
 
@@ -108,7 +108,7 @@
 
 \begin{equation}
 \label{mx:expdistr}
-P_{\Lambda}(c|s) = \frac{1}{Z(s)} \sum_{i}\exp(\lambda_i f_i(s,c))
+P_{\Lambda}(c|s) = \frac{1}{Z(s)} \exp (\sum_{i}\lambda_i f_i(s,c))
 \end{equation}
 
  \item Improved Iterative Scaling
@@ -198,7 +198,7 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
   \includegraphics[scale=0.40]{presentation/naive_bayes_split.eps}
 \end{figure}
 
-\item No accuracy lose
+\item No lose of accuracy 
 
 \end{itemize}
 
@@ -327,7 +327,7 @@ P(w|c) = \frac{tf_{w,c}}{|c|}
 \begin{itemize}
 
 \item 8 cores machine
-\item 40 000 articles from wikipedia
+\item 40 000 articles from Wikipedia
 \item 5 runs for every core, ignore the first one
 
 \end{itemize}
